@@ -18,3 +18,8 @@ This repository contains a Credit Risk Scoring System built for the Applied Data
 - Propose concise and clear plans before generating large code changes.
 - Never edit files outside the specified scope of the task.
 - Ensure all introduced features maintain linear compatibility with existing APIs.
+
+## Setup & Verification Commands
+- Install dependencies: `uv sync`
+- Run tests: `uv run pytest`
+- Run these after every change and fix failures before finishing.
