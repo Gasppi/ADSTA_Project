@@ -27,7 +27,9 @@ class Money(BaseModel):
     def as_monthly(self) -> "Money":
         if self.period is Period.MONTHLY:
             return self
-        monthly = (self.amount / MONTHS_PER_YEAR).quantize(RAPPEN, rounding=ROUND_HALF_UP)
+        monthly = (self.amount / MONTHS_PER_YEAR).quantize(
+            RAPPEN, rounding=ROUND_HALF_UP
+        )
         return Money(amount=monthly, currency=self.currency, period=Period.MONTHLY)
 
 
@@ -85,7 +87,9 @@ SAMPLE_REQUEST: Final[dict[str, JsonValue]] = {
 class DecisionRequest(BaseModel):
     """The application a case worker has confirmed, sent for a decision."""
 
-    model_config = ConfigDict(frozen=True, json_schema_extra={"examples": [SAMPLE_REQUEST]})
+    model_config = ConfigDict(
+        frozen=True, json_schema_extra={"examples": [SAMPLE_REQUEST]}
+    )
 
     entered: CaseWorkerInput
 

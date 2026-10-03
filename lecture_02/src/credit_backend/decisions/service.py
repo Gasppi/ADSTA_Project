@@ -1,7 +1,6 @@
 """One decision, from the confirmed application to the answer."""
 
 from dataclasses import asdict
-from decimal import Decimal
 
 from credit_backend.contracts import DecisionRequest, DecisionResponse
 from credit_backend.decisions.features import build_features

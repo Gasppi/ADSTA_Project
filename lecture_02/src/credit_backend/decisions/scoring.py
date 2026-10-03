@@ -23,7 +23,7 @@ class PlaceholderScorer(Scorer):
         return "placeholder"
 
     @property
-    def threshold(self) -> int:
+    def threshold(self) -> float:
         return 0.30
 
     def probability_of_default(self, features: FeatureVector) -> float:
