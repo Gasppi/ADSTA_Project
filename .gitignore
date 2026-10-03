@@ -21,3 +21,4 @@ Thumbs.db
 # Secrets & Data
 .env
 *.log
+.coverage
