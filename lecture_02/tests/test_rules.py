@@ -1,11 +1,9 @@
-from typing import Final
-
 from dataclasses import replace
+from typing import Final
 
 import pytest
 
 from credit_backend.contracts import Outcome
-
 from credit_backend.decisions.rules import Policy, RuleInputs, decide
 
 POLICY: Final = Policy(threshold=0.30)
