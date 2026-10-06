@@ -9,11 +9,13 @@ from credit_backend.decisions.service import DecisionService
 router = APIRouter()
 
 
-@router.get('/health')
+@router.get("/health")
 def health() -> dict[str, str]:
-    return {'status': 'ok'}
+    return {"status": "ok"}
 
 
-@router.post('/decisions')
-def create_decision(service: Annotated[DecisionService, Depends(get_service)], request: DecisionRequest) -> DecisionResponse:
+@router.post("/decisions")
+def create_decision(
+    service: Annotated[DecisionService, Depends(get_service)], request: DecisionRequest
+) -> DecisionResponse:
     return service.decide(request)

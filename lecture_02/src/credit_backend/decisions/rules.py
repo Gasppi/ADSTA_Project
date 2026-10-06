@@ -25,7 +25,10 @@ def decide(inputs: RuleInputs, policy: Policy) -> Decision:
     """Every rule that fails adds its reason. No reason means approved."""
     reasons: list[Reason] = []
 
-    if inputs.default_probability is not None and inputs.default_probability > policy.threshold:
+    if (
+        inputs.default_probability is not None
+        and inputs.default_probability >= policy.threshold
+    ):
         reasons.append(Reason.DEFAULT_PROBABILITY_ABOVE_THRESHOLD)
 
     outcome = Outcome.REFUSED if reasons else Outcome.APPROVED
