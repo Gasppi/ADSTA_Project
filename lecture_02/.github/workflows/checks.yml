@@ -4,12 +4,36 @@
 name: checks
 # Task 9: your trigger. Find the event that fits in the list of events that trigger workflows,
 # https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
-on: tbd
+name: checks
+
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
 
 jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      # Task 9: your steps. Install uv, install the project from the lockfile, then run the same
-      # checks you run on your machine.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd lecture_02
+          uv sync --frozen
+
+      - name: Run tests with coverage threshold (min 80%)
+        run: |
+          cd lecture_02
+          uv run pytest --cov=credit_backend --cov-fail-under=80
+          
