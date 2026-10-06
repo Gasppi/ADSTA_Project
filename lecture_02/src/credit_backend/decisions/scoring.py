@@ -63,3 +63,6 @@ class GasparBaselineScorer(Scorer):
         )
 
         return max(0.0, min(1.0, round(raw_prob, 4)))
+
+
+    #Comment task8 just to check if the test is working

@@ -1,1 +1,8 @@
 # Task 8: the files Docker leaves out of the build context. Find out what belongs here.
+.venv
+.pytest_cache
+.coverage
+__pycache__
+*.pyc
+.git
+.gitignore
