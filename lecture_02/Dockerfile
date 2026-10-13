@@ -2,6 +2,9 @@
 # The slide follows uv's Docker guide, https://docs.astral.sh/uv/guides/integration/docker/
 FROM python:3.12-slim
 
+# Instalar herramientas de compilación para paquetes basados en Rust (como pydantic-core)
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential
+
 # Copia los binarios de uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
