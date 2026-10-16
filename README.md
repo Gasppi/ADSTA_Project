@@ -16,7 +16,7 @@ Desmond:
 
 ---
 
-## 🛠️ Task 10: Local Setup & Development Instructions
+##  Task 10: Local Setup & Development Instructions
 
 ### 1. Install Dependencies
 ```bash
@@ -42,7 +42,7 @@ Access the interactive documentation at `http://localhost:8000/docs`.
 
 ---
 
-## 🐳 Docker Deployment
+##  Docker Deployment
 
 ### 1. Build Container Image
 ```bash
@@ -53,3 +53,15 @@ docker build -t credit-backend .
 ```bash
 docker run -p 8000:8000 credit-backend
 ```
+
+---
+
+## 📝 Task 11: Decision Log
+
+### Baseline Scorer Selection
+- **Decision:** Implemented `GasparBaselineScorer` using `revolving_utilisation`, `debt_ratio`, and `late_90`.
+- **Rationale:** Revolving credit utilization and past severe delinquency (`late_90`) are stronger financial indicators of credit risk compared to static demographic metrics like the number of dependents.
+
+### Containerization & CI Strategy
+- **Multi-Stage Docker Layer Caching:** Separated dependency sync (`COPY pyproject.toml uv.lock ./` + `RUN uv sync --frozen --no-install-project`) from code copying to optimize Docker layer caching and reduce build times during local development and CI runs.
+- **Continuous Integration Pipeline:** Configured GitHub Actions (`.github/workflows/checks.yml`) to enforce automated testing and a strict 80% minimum coverage policy on every pull request.
