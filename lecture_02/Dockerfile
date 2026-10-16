@@ -1,6 +1,6 @@
 # Task 7: the Dockerfile for your backend service, ported from the slide.
 # The slide follows uv's Docker guide, https://docs.astral.sh/uv/guides/integration/docker/
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # Instalar herramientas de compilación para paquetes basados en Rust (como pydantic-core)
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential
