@@ -107,7 +107,7 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 - Missing inputs fall back to fixed defaults (debt ratio 0.50, utilisation 0.30, `late_90` 0).
 - TODO: add how it compared with Desmond's baseline (same applicants, same measure).
 
-**Known limit:** `scoring.py` limits only the output, not the inputs. A very large `late_90` or utilisation pushes the result to 1.0, so applicants above that point cannot be told apart. TODO: confirm whether `features.py` handles the codes 96 and 98 before they reach the scorer, and note the answer here.
+**Known limit:**contracts.py only sets lower bounds on late_90 and revolving_utilisation (ge=0). Neither it nor features.py rejects unrealistic values, so a late_90 of 98 (or a utilisation in the thousands) reaches the scorer, which only limits its output to the range 0 to 1. The result saturates at 1.0 and such applicants cannot be told apart. Possible fix: add an upper bound to late_90 in contracts.py (real counts in the training data run from 0 to 17) and reject larger values with a 422 error.
 
 ### 2026-10-17: Docker image
 
