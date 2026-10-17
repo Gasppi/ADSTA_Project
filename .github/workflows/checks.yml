@@ -24,15 +24,25 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
           cd lecture_02
           uv sync --frozen
 
+      - name: Lint and format check
+        run: |
+          cd lecture_02
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Type check
+        run: |
+          cd lecture_02
+          uv run ty check
+
       - name: Run tests with coverage threshold (min 80%)
         run: |
           cd lecture_02
           uv run pytest --cov=credit_backend --cov-fail-under=80
-          
