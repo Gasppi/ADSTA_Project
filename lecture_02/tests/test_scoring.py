@@ -16,5 +16,5 @@ def test_gaspar_baseline_matches_hand_calculation():
 
     scorer = GasparBaselineScorer()
 
-    # Cálculo manual: 0.03 + (0.20 * 0.35) + (0.25 * 0.25) + (0.0 * 0.18) = 0.1625
+    # C.manual: 0.03 + (0.20 * 0.35) + (0.25 * 0.25) + (0.0 * 0.18) = 0.1625
     assert scorer.probability_of_default(features) == 0.1625
