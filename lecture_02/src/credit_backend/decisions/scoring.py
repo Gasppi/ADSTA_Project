@@ -35,8 +35,11 @@ class PlaceholderScorer(Scorer):
 # Ask yourself: if I judged an applicant from these features alone, which figures would
 # worry me, and how much?
 
+
 class GasparBaselineScorer(Scorer):
-    """Hand-built credit risk estimate incorporating debt ratio, revolving utilisation, and severe lateness."""
+    """Hand-built credit risk estimate
+    incorporating debt ratio, revolving utilisation,
+    and severe lateness."""
 
     @property
     def model_version(self) -> str:
@@ -49,18 +52,10 @@ class GasparBaselineScorer(Scorer):
     def probability_of_default(self, features: FeatureVector) -> float:
         debt_ratio = features.debt_ratio if features.debt_ratio is not None else 0.50
         revolving_util = (
-            features.revolving_utilisation
-            if features.revolving_utilisation is not None
-            else 0.30
+            features.revolving_utilisation if features.revolving_utilisation is not None else 0.30
         )
         late_90 = features.late_90 if features.late_90 is not None else 0.0
 
-        raw_prob = (
-            0.03
-            + (debt_ratio * 0.35)
-            + (revolving_util * 0.25)
-            + (late_90 * 0.18)
-        )
+        raw_prob = 0.03 + (debt_ratio * 0.35) + (revolving_util * 0.25) + (late_90 * 0.18)
 
         return max(0.0, min(1.0, round(raw_prob, 4)))
-
