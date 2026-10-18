@@ -124,4 +124,4 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 
 ## Fresh-clone check
 
-TODO: Desmond follows this README on a fresh clone. Date and result: pending.
+2026-10-18, Windows 10 (build 19045), Desmond. Followed this README on a fresh clone of `docs/readme-and-decision-log`. `uv sync` installed 52 packages on Python 3.13.15. `uv run pytest --cov=credit_backend --cov-fail-under=80` gave 9 passed with 96.79% coverage. `docker build` finished in about 6 minutes on `python:3.13-slim`. The container served `/docs`, and `POST /decisions` returned 200 with `default_probability` 0.1625 and `model_version` `gaspar-baseline-v1`. Nothing had to be guessed.
