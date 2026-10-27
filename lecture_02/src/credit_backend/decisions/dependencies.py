@@ -6,7 +6,8 @@ from typing import cast
 from fastapi import Request
 
 from credit_backend.decisions.rules import Policy
-from credit_backend.decisions.scoring import PlaceholderScorer, RegisteredScorer, Scorer
+from credit_backend.decisions.scoring import GasparBaselineScorer, RegisteredScorer, Scorer
+from credit_backend.decisions.scoring import GasparBaselineScorer
 from credit_backend.decisions.service import DecisionService
 
 
@@ -26,6 +27,8 @@ def build_scorer() -> Scorer:
 
 def build_service() -> DecisionService:
     scorer = build_scorer()
+    # Task 6: replace the placeholder with the baseline your team chose.
+    scorer = GasparBaselineScorer()
     return DecisionService(
         scorer=scorer,
         policy=Policy(
