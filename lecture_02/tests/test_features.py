@@ -36,5 +36,5 @@ def test_missing_income_gives_none_debt_ratio():
 
     features = build_features(entered)
 
-    assert features.monthly_income is None
+    assert features.monthly_inc is None
     assert features.debt_ratio is None

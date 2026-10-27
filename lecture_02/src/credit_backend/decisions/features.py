@@ -10,31 +10,24 @@ class FeatureVector:
     """Each feature is named after its column in the training data."""
 
     age: float
-    dependants: float
-    revolving_utilisation: float
+    dependents: float
+    rev_util: float
     late_90: float
-    monthly_income: float | None
-    monthly_debt_obligations: float
+    monthly_inc: float | None
     debt_ratio: float | None
-    # Task 5: Correct features picked.
 
 
 def build_features(entered: CaseWorkerInput) -> FeatureVector:
+    income = entered.monthly_income
+    monthly_inc = float(income.as_monthly().amount) if income is not None else None
+    debt_ratio = (
+        float(entered.monthly_debt_obligations) / monthly_inc if monthly_inc is not None else None
+    )
     return FeatureVector(
         age=float(entered.age),
-        dependants=float(entered.dependants),
-        revolving_utilisation=entered.revolving_utilisation,
+        dependents=float(entered.dependants),
+        rev_util=entered.revolving_utilisation,
         late_90=float(entered.late_90),
-        monthly_income=(
-            float(entered.monthly_income.as_monthly().amount)
-            if entered.monthly_income is not None
-            else None
-        ),
-        monthly_debt_obligations=float(entered.monthly_debt_obligations),
-        debt_ratio=(
-            float(entered.monthly_debt_obligations)
-            / float(entered.monthly_income.as_monthly().amount)
-            if entered.monthly_income is not None
-            else None
-        ),
+        monthly_inc=monthly_inc,
+        debt_ratio=debt_ratio,
     )
