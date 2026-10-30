@@ -42,6 +42,7 @@ def start_run(model: str, config: dict[str, Any], job_type: str = "train") -> wa
         group=model,
         tags=[model],
         config=config,
+        name=f"{model}-run"
     )
 
 
@@ -65,6 +66,7 @@ def save_model(trained: TrainedModel, folder: Path) -> dict[str, Any]:
 def log_model(run: wandb.Run, trained: TrainedModel) -> None:
     """Logs the model as an artifact. The sweep and the registry pick the best one by its score."""
     run.summary[metrics.KEY] = trained.score
+    run.log({metrics.KEY: trained.score})
     with tempfile.TemporaryDirectory() as folder:
         metadata = save_model(trained, Path(folder))
         artifact = wandb.Artifact(f"model-a-{trained.name}", type="model", metadata=metadata)
