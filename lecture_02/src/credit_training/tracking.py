@@ -17,7 +17,7 @@ from credit_training.data import FEATURES, SEED
 
 # Task 1: the name of your team on W&B, so that all three of you log into one project.
 # None logs into your own account.
-ENTITY: Final[str | None] = None
+ENTITY: Final[str | None] = "gaspar-defernandez-universit-t-luzern"
 PROJECT: Final = "credit-model-a"
 
 # W&B keeps a local copy of every run in WANDB_DIR. Outside the repository it stays out of Git.
