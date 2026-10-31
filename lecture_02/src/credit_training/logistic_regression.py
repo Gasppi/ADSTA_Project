@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 from credit_training import metrics
 from credit_training.data import SEED, load_splits
 from credit_training.preprocessing import build_preprocessing
-from credit_training.tracking import TrainedModel, log_model, start_run
+from credit_training.tracking import TrainedModel, log_model, start_run, log_details
 
 NAME: Final = "logistic-regression"
 PARAMS: Final[dict[str, Any]] = {"C": 1.0, "class_weight": None}
@@ -40,7 +40,7 @@ def train(params: dict[str, Any] | None = None) -> TrainedModel:
 
         # Task 4: track this training, so that a teammate can find the run and repeat it.
         # The slide "What to log" lists what belongs in it.
-
+        log_details(run, splits, splits.val.y, p_val)
         log_model(run, trained)
 
     print(f"{NAME}: {metrics.KEY} = {trained.score:.3f}")
