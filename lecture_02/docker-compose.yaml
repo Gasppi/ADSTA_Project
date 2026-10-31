@@ -20,24 +20,59 @@ services:
 
   extraction:
     build: extraction_service
-    # Task 2: hand the service your Model B from .env. Give it a volume at /models, so that the
-    # checkpoint is downloaded once. Publish its port 8000 as 8001 on your machine. Add a health
-    # check against GET /health, and allow for the minutes the first download takes.
-    # The image has no curl. Check with Python instead:
-    #   python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    environment:
+      MODEL_B_CHECKPOINT: ${MODEL_B_CHECKPOINT:?set MODEL_B_CHECKPOINT in .env}
+      MODEL_B_REVISION: ${MODEL_B_REVISION:?set MODEL_B_REVISION in .env}
+    volumes:
+      - models:/models
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 10s
+      start_period: 600s
+      retries: 30
 
   ollama:
     image: ollama/ollama:0.32.5
-    # Task 2: a volume at /root/.ollama, so that Model C is pulled once, and a health check.
-    # The image has no curl either. The command "ollama list" only works when Ollama answers.
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 10
 
   backend:
     build: .
-    # Task 2: the settings of the backend, from .env and from the names of the other services.
-    # Inside Compose a service reaches another by its name, for example http://extraction:8000.
-    # The backend reads DATABASE_URL, EXTRACTION_URL, OLLAMA_URL, MODEL_A and MODEL_C.
-    # Publish port 8000. Add a health check against GET /health. Start the backend only when
-    # postgres, extraction and ollama are healthy.
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      EXTRACTION_URL: http://extraction:8000
+      OLLAMA_URL: http://ollama:11434
+      MODEL_A: ${MODEL_A:-}
+      MODEL_C: ${MODEL_C:-}
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      extraction:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
 
 volumes:
   postgres:
+  models:
+  ollama:
