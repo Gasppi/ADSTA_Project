@@ -2,6 +2,8 @@
 
 from typing import Protocol
 
+import httpx
+
 from credit_backend.clients.http import build_client
 from credit_backend.contracts import ExtractionResult
 
@@ -24,9 +26,14 @@ class ExtractionClient:
         self._client.close()
 
     def extract(self, payslip: bytes, debt_register: bytes) -> ExtractionResult:
-        # Task 7e: when the service does not answer, answers too late or answers with an error,
-        # raise ExtractionUnavailableError, so that main.py can answer with a clear 503.
-        response = self._client.post(
-            "/extractions", files={"payslip": payslip, "debt_register": debt_register}
-        )
-        return ExtractionResult.model_validate(response.json())
+        try:
+            response = self._client.post(
+                "/extractions", files={"payslip": payslip, "debt_register": debt_register}
+            )
+            response.raise_for_status()
+            return ExtractionResult.model_validate(response.json())
+        except (httpx.HTTPError, ValueError) as error:
+            # HTTPError covers no answer, too late and an error status. ValueError covers an
+            # answer that is not the expected JSON.
+            message = f"The Information Extraction Service gave no result: {error!r}"
+            raise ExtractionUnavailableError(message) from error

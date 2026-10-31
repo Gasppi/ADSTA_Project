@@ -16,6 +16,7 @@ dependencies = [
     "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.2",
     "sqlalchemy>=2.1.6",
+    "python-multipart>=0.0.32",
 ]
 
 [build-system]
@@ -46,3 +47,6 @@ testpaths = ["tests"]
 
 [tool.ty.src]
 exclude = ["extraction_service"]
+
+[tool.ty.environment]
+extra-paths = ["scripts", "tests"]

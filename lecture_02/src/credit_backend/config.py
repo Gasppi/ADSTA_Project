@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     """Where Ollama answers, read from OLLAMA_URL."""
 
-    # Task 6: the Ollama tag of your Model C, read from MODEL_C. Write no tag into the code.
-    # When MODEL_C is not set, the value is None.
+    model_c: str | None = None
+    """The Ollama tag of Model C, read from MODEL_C. Without it, decisions have no wording."""
 
-    # Task 7b: the URL of your database, read from DATABASE_URL. Give it no default, because
-    # it carries a password, and a password belongs in .env and never in Git.
+    database_url: str
+    """The URL of the database, read from DATABASE_URL. It has no default, because it carries
+    a password, and a password belongs in .env and never in Git."""

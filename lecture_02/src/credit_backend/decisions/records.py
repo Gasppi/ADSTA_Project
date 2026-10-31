@@ -1,11 +1,12 @@
 """One row for every decision, so that any decision can be explained later."""
 
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Engine, select
+from sqlalchemy import JSON, DateTime, Engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
-from credit_backend.contracts import DecisionRecordRead
+from credit_backend.contracts import DecisionRecordRead, Outcome, Reason
 
 
 class Base(DeclarativeBase):
@@ -19,9 +20,23 @@ class DecisionRecord(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
-    # Task 7c: a column for everything the decision rests on. That is at least the features,
-    # the outcome, the reasons, the wording and the model version, in columns named outcome,
-    # reasons, wording and model_version. A value nobody could read is stored as NULL, never as 0.
+    # The features the model saw. A value nobody could read is NULL, never 0.
+    age: Mapped[float | None]
+    dependants: Mapped[float | None]
+    revolving_utilisation: Mapped[float | None]
+    late_90: Mapped[float | None]
+    monthly_income: Mapped[float | None]
+    monthly_debt_obligations: Mapped[float | None]
+    debt_ratio: Mapped[float | None]
+    # The other inputs of the rules.
+    has_loss_certificate: Mapped[bool | None]
+    extraction_checkpoint: Mapped[str | None]
+    # What the decision rests on and what it was.
+    default_probability: Mapped[float | None]
+    model_version: Mapped[str]
+    outcome: Mapped[str]
+    reasons: Mapped[list[str]] = mapped_column(JSON)
+    wording: Mapped[str | None]
 
 
 class DecisionRecords:
@@ -32,10 +47,33 @@ class DecisionRecords:
         """Creates the table if it is missing. It never changes a table that exists."""
         Base.metadata.create_all(self._engine)
 
-    def save(self) -> int:
-        # Task 7c: take what the row stores, write one row, and return its id. Change the
-        # parameters to what your service hands over.
-        raise NotImplementedError("Task 7c: store one decision")
+    def save(
+        self,
+        *,
+        features: Mapping[str, float | None],
+        has_loss_certificate: bool | None,
+        extraction_checkpoint: str | None,
+        default_probability: float | None,
+        model_version: str,
+        outcome: Outcome,
+        reasons: Sequence[Reason],
+        wording: str | None,
+    ) -> int:
+        """Writes one row for one decision and returns its id."""
+        row = DecisionRecord(
+            **features,
+            has_loss_certificate=has_loss_certificate,
+            extraction_checkpoint=extraction_checkpoint,
+            default_probability=default_probability,
+            model_version=model_version,
+            outcome=outcome.value,
+            reasons=[reason.value for reason in reasons],
+            wording=wording,
+        )
+        with Session(self._engine) as session:
+            session.add(row)
+            session.commit()
+            return row.id
 
     def recent(self, limit: int) -> list[DecisionRecordRead]:
         statement = select(DecisionRecord).order_by(DecisionRecord.id.desc()).limit(limit)
