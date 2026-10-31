@@ -121,11 +121,10 @@ class DecisionRecordRead(BaseModel):
     id: int
     created_at: datetime
     age: float | None
-    dependants: float | None
-    revolving_utilisation: float | None
+    dependents: float | None
+    rev_util: float | None
     late_90: float | None
-    monthly_income: float | None
-    monthly_debt_obligations: float | None
+    monthly_inc: float | None
     debt_ratio: float | None
     has_loss_certificate: bool | None
     extraction_checkpoint: str | None

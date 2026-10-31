@@ -22,11 +22,10 @@ class DecisionRecord(Base):
     )
     # The features the model saw. A value nobody could read is NULL, never 0.
     age: Mapped[float | None]
-    dependants: Mapped[float | None]
-    revolving_utilisation: Mapped[float | None]
+    dependents: Mapped[float | None]
+    rev_util: Mapped[float | None]
     late_90: Mapped[float | None]
-    monthly_income: Mapped[float | None]
-    monthly_debt_obligations: Mapped[float | None]
+    monthly_inc: Mapped[float | None]
     debt_ratio: Mapped[float | None]
     # The other inputs of the rules.
     has_loss_certificate: Mapped[bool | None]
