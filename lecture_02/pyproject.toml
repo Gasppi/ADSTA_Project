@@ -34,3 +34,10 @@ select = ["E", "F", "I"]
 
 [tool.uv.build-backend]
 module-name = ["credit_backend", "credit_training"]
+
+[tool.pytest.ini_options]
+pythonpath = ["scripts", "tests"]
+testpaths = ["tests"]
+
+[tool.ty.src]
+exclude = ["extraction_service"]
