@@ -30,39 +30,61 @@ def date_of_birth_accuracy(rows: pd.DataFrame) -> float:
     """The share of documents whose date of birth was read exactly."""
     return float((rows["read"] == rows["expected"]).mean())
 
+CENTIMES: Final = Decimal("0.01")
+
+
+def _cents(value: object) -> Decimal | None:
+    """A salary as a Decimal rounded to centimes, or None when nothing was read."""
+    return None if pd.isna(value) else Decimal(str(value)).quantize(CENTIMES)
+
+
+def _same_name(value: object) -> str | None:
+    """A name without case and extra spaces, or None when nothing was read."""
+    return None if pd.isna(value) else " ".join(str(value).split()).lower()
+
+
+def _ratio(part: int, whole: int) -> float:
+    return part / whole if whole else float("nan")
+
 
 def gross_accuracy(rows: pd.DataFrame) -> float:
-    # Task 5: the share of documents whose gross salary was read exactly, after both sides are
-    # normalised to the same form. Take it over all documents, as on the slide: a salary the
-    # service could not read counts as not right.
-    raise NotImplementedError("Task 5: exact-match accuracy of the gross salary")
+    """The share of documents whose gross salary was read exactly, to the centime."""
+    expected = rows["expected"].map(_cents)
+    read = rows["read"].map(_cents)
+    return float((read == expected).mean())
 
 
 def gross_mean_absolute_error(rows: pd.DataFrame) -> float:
-    # Task 5: the mean absolute error of the gross salary, in CHF. Take it over the documents
-    # whose salary was read. A salary nobody could read has no error to measure, and the
-    # no-answer rate counts it.
-    raise NotImplementedError("Task 5: mean absolute error of the gross salary in CHF")
+    """The mean absolute error of the gross salary in CHF, over the documents that were read."""
+    read = rows[rows["read"].notna()]
+    errors = (read["read"].astype(float) - read["expected"].astype(float)).abs()
+    return float(errors.mean())
 
 
 def loss_certificate_precision_recall(rows: pd.DataFrame) -> dict[str, float]:
-    # Task 5: precision and recall for an open loss certificate, from the confusion matrix.
-    # pd.crosstab builds the matrix. Leave out the documents the service could not read; the
-    # no-answer rate counts them. A layout with no open loss certificate has no positives, so
-    # its precision or recall is nan, and that is correct. Return a dict with the keys
-    # "precision" and "recall".
-    raise NotImplementedError("Task 5: precision and recall of the loss certificate")
+    """Precision and recall of an open loss certificate, over the documents that were read."""
+    read = rows[rows["read"].notna()]
+    matrix = pd.crosstab(read["expected"].astype(bool), read["read"].astype(bool))
+    matrix = matrix.reindex(index=[False, True], columns=[False, True], fill_value=0)
+    true_positive = int(matrix.at[True, True])
+    false_positive = int(matrix.at[False, True])
+    false_negative = int(matrix.at[True, False])
+    return {
+        "precision": _ratio(true_positive, true_positive + false_positive),
+        "recall": _ratio(true_positive, true_positive + false_negative),
+    }
 
 
 def applicant_name_accuracy(rows: pd.DataFrame) -> float:
-    # Task 5: the share of documents whose name was read exactly, after case and spaces are
-    # normalised on both sides. Take it over all documents, as the gross accuracy.
-    raise NotImplementedError("Task 5: exact-match accuracy of the applicant's name")
+    """The share of documents whose name was read exactly, ignoring case and extra spaces."""
+    expected = rows["expected"].map(_same_name)
+    read = rows["read"].map(_same_name)
+    return float((read == expected).mean())
 
 
 def no_answer_rate(rows: pd.DataFrame) -> float:
-    # Task 5: the share of documents for which the service read nothing.
-    raise NotImplementedError("Task 5: the no-answer rate")
+    """The share of documents for which the service read nothing."""
+    return float(rows["read"].isna().mean())
 
 
 METRICS: Final[dict[str, dict[str, Metric]]] = {
