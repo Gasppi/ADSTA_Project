@@ -2,7 +2,6 @@
 name = "credit-backend"
 version = "0.1.0"
 requires-python = ">=3.13"
-# Task 1: the packages your service needs to run.
 dependencies = [
     "fastapi>=0.142.2",
     "joblib>=1.6.0",
@@ -27,7 +26,6 @@ dev = [
     "ty>=0.0.84",
 ]
 
-# Task 3: the settings of your tools.
 [tool.ruff]
 line-length = 100
 
