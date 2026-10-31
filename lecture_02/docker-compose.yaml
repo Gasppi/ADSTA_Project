@@ -1,0 +1,78 @@
+name: credit
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 10
+
+  extraction:
+    build: extraction_service
+    environment:
+      MODEL_B_CHECKPOINT: ${MODEL_B_CHECKPOINT:?set MODEL_B_CHECKPOINT in .env}
+      MODEL_B_REVISION: ${MODEL_B_REVISION:?set MODEL_B_REVISION in .env}
+    volumes:
+      - models:/models
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 10s
+      start_period: 600s
+      retries: 30
+
+  ollama:
+    image: ollama/ollama:0.32.5
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 10
+
+  backend:
+    build: .
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      EXTRACTION_URL: http://extraction:8000
+      OLLAMA_URL: http://ollama:11434
+      MODEL_A: ${MODEL_A:-}
+      MODEL_C: ${MODEL_C:-}
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      extraction:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
+
+volumes:
+  postgres:
+  models:
+  ollama:

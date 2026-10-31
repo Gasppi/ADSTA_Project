@@ -93,7 +93,7 @@ class RegisteredScorer(Scorer):
 # worry me, and how much?
 
 class GasparBaselineScorer(Scorer):
-    """Hand-built credit risk estimate incorporating debt ratio, revolving utilisation, and severe lateness."""
+    """Hand-built credit risk estimate from debt ratio, utilisation and severe lateness."""
 
     @property
     def model_version(self) -> str:
