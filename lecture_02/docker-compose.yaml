@@ -1,0 +1,43 @@
+name: credit
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 10
+
+  extraction:
+    build: extraction_service
+    # Task 2: hand the service your Model B from .env. Give it a volume at /models, so that the
+    # checkpoint is downloaded once. Publish its port 8000 as 8001 on your machine. Add a health
+    # check against GET /health, and allow for the minutes the first download takes.
+    # The image has no curl. Check with Python instead:
+    #   python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+  ollama:
+    image: ollama/ollama:0.32.5
+    # Task 2: a volume at /root/.ollama, so that Model C is pulled once, and a health check.
+    # The image has no curl either. The command "ollama list" only works when Ollama answers.
+
+  backend:
+    build: .
+    # Task 2: the settings of the backend, from .env and from the names of the other services.
+    # Inside Compose a service reaches another by its name, for example http://extraction:8000.
+    # The backend reads DATABASE_URL, EXTRACTION_URL, OLLAMA_URL, MODEL_A and MODEL_C.
+    # Publish port 8000. Add a health check against GET /health. Start the backend only when
+    # postgres, extraction and ollama are healthy.
+
+volumes:
+  postgres:
