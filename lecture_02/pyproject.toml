@@ -2,7 +2,6 @@
 name = "credit-backend"
 version = "0.1.0"
 requires-python = ">=3.13"
-# Task 1: the packages your service needs to run.
 dependencies = [
     "fastapi>=0.142.2",
     "joblib>=1.6.0",
@@ -12,6 +11,12 @@ dependencies = [
     "scikit-learn>=1.9.1",
     "uvicorn>=0.54.0",
     "wandb>=0.30.0",
+    "httpx>=0.28.1",
+    "ollama>=0.6.3",
+    "psycopg[binary]>=3.3.6",
+    "pydantic-settings>=2.16.2",
+    "sqlalchemy>=2.1.6",
+    "python-multipart>=0.0.32",
 ]
 
 [build-system]
@@ -27,7 +32,6 @@ dev = [
     "ty>=0.0.84",
 ]
 
-# Task 3: the settings of your tools.
 [tool.ruff]
 line-length = 100
 
@@ -36,3 +40,13 @@ select = ["E", "F", "I"]
 
 [tool.uv.build-backend]
 module-name = ["credit_backend", "credit_training"]
+
+[tool.pytest.ini_options]
+pythonpath = ["scripts", "tests"]
+testpaths = ["tests"]
+
+[tool.ty.src]
+exclude = ["extraction_service"]
+
+[tool.ty.environment]
+extra-paths = ["scripts", "tests"]

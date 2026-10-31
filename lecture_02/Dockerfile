@@ -1,4 +1,4 @@
-# Task 7: the Dockerfile for your backend service, ported from the slide.
+# The Dockerfile of the backend service.
 # The slide follows uv's Docker guide, https://docs.astral.sh/uv/guides/integration/docker/
 FROM python:3.13-slim
 
