@@ -47,16 +47,47 @@ uv run pytest --cov=credit_backend --cov-fail-under=80
 
 This runs all tests and fails if the code coverage drops below 80%. The same command runs in CI.
 
-## Run the container
+## Run the whole system with Docker Compose
 
-Docker Desktop must be running.
+Docker Desktop must be running. The system has four services: `postgres` (the database), `extraction` (Model B, reads the documents), `ollama` (Model C, words the explanation) and `backend` (the API).
+
+**1. Create your settings file.** Copy the template and fill it in:
 
 ```bash
-docker build -t credit-backend .
-docker run --rm -p 8000:8000 credit-backend
+cp .env.example .env
 ```
 
-Open http://localhost:8000/docs, the same page as above. In `-p 8000:8000`, the left number is the port on your computer and the right number is the port inside the container. Stop the container with `Ctrl+C`; `--rm` deletes it.
+| Variable | Value |
+|---|---|
+| `POSTGRES_USER`, `POSTGRES_DB` | `credit` (already in the template) |
+| `POSTGRES_PASSWORD` | A password you choose |
+| `DATABASE_URL` | `postgresql+psycopg://credit:YOUR_PASSWORD@postgres:5432/credit`, with the same password |
+| `MODEL_B_CHECKPOINT` | `impira/layoutlm-document-qa` |
+| `MODEL_B_REVISION` | `beed3c4d02d86017ebca5bd0fdf210046b907aa6` |
+| `MODEL_C` | `llama3.2:3b` |
+| `MODEL_A`, `WANDB_API_KEY` | Leave `MODEL_A` empty to score with the baseline. `WANDB_API_KEY` is not used while `MODEL_A` is empty. |
+
+`.env` holds secrets. Never commit it or paste it into a chat.
+
+**2. Start everything:**
+
+```bash
+docker compose up --build
+```
+
+The first start builds the images and downloads Model B, so `extraction` can take several minutes to become healthy. The `backend` starts after the other three report healthy.
+
+**3. Download Model C once.** In a second terminal, in the same folder:
+
+```bash
+docker compose exec ollama ollama pull llama3.2:3b
+```
+
+**4. Try it.** Open http://localhost:8000/docs. `POST /extractions` reads a document, `POST /decisions` returns a decision and stores it, and `GET /decisions/recent` lists the stored decisions. The extraction service itself is on port 8001.
+
+**5. Stop.** Press `Ctrl+C`, or run `docker compose down`. The database and the downloaded models stay in Docker volumes. `docker compose down -v` deletes those volumes too, so use it only when you want to start from nothing.
+
+**Memory.** On one team machine, the default 4 GB for Docker was not enough for all four services. Give Docker more memory in Docker Desktop, or on Windows in `~/.wslconfig`. If Model C takes longer than 60 seconds to answer, the backend still returns the decision, without the wording, and logs a warning.
 
 ## Project layout
 
