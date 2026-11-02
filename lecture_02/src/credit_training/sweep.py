@@ -20,8 +20,15 @@ MODELS: Final[dict[str, ModuleType]] = {
 # Task 6: the settings each sweep searches, written as on the slide "Hyperparameter Sweeps".
 # Name only settings that the model's PARAMS has, so that the training reads them.
 SEARCH_SPACES: Final[dict[str, dict[str, Any]]] = {
-    logistic_regression.NAME: {},
-    random_forest.NAME: {},
+    logistic_regression.NAME: {
+        "C": {"distribution": "log_uniform_values", "min": 0.001, "max": 100.0},
+        "class_weight": {"values": [None, "balanced"]},
+    },
+    random_forest.NAME: {
+        "n_estimators": {"values": [100, 200, 300]},
+        "max_depth": {"values": [4, 6, 8, 12]},
+        "max_features": {"values": ["sqrt", "log2", None]},
+    },
 }
 
 
