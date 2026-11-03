@@ -27,7 +27,7 @@ SEARCH_SPACES: Final[dict[str, dict[str, Any]]] = {
     random_forest.NAME: {
         "n_estimators": {"values": [100, 200, 300]},
         "max_depth": {"values": [4, 6, 8, 12]},
-        "max_features": {"values": ["sqrt", "log2", None]},
+        "max_features": {"values": ["sqrt", 0.5 , None]},
     },
 }
 

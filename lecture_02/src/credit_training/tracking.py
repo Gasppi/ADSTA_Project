@@ -6,10 +6,11 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
-import numpy as np
-from sklearn.metrics import average_precision_score, precision_score, recall_score
+
 import joblib
+import numpy as np
 import wandb
+from sklearn.metrics import average_precision_score, precision_score, recall_score, roc_auc_score
 from sklearn.pipeline import Pipeline
 
 from credit_training import metrics
@@ -42,7 +43,7 @@ def start_run(model: str, config: dict[str, Any], job_type: str = "train") -> wa
         group=model,
         tags=[model],
         config=config,
-        name=f"{model}-run"
+        name=f"{model}-run",
     )
 
 
@@ -73,6 +74,7 @@ def log_model(run: wandb.Run, trained: TrainedModel) -> None:
         artifact.add_dir(folder)
         run.log_artifact(artifact)
 
+
 def log_details(run: wandb.Run, splits: Any, y_val: Any, p_val: Any) -> None:
     """Everything a teammate needs to repeat the run (slide "What to log")."""
     run.config.update(
@@ -94,6 +96,7 @@ def log_details(run: wandb.Run, splits: Any, y_val: Any, p_val: Any) -> None:
             "val/recall": recall_score(y_true, refused),
             "val/precision": precision_score(y_true, refused, zero_division=0),
             "val/ap": average_precision_score(y_true, p_val),
+            "val/auc": roc_auc_score(y_true, p_val),
             "val/confusion": wandb.plot.confusion_matrix(
                 y_true=y_true, preds=refused.tolist(), class_names=["no default", "default"]
             ),
