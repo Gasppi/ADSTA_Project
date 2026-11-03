@@ -87,13 +87,16 @@ class RegisteredScorer(Scorer):
         if any(value is None for value in row.values()):
             return None
         return float(self.probabilities(pd.DataFrame([row]))[0])
+
+
 # Task 6: each of you adds a scorer here, such as BaselineScorer(Scorer). It works out a
 # probability of default by hand from the features, until Model A replaces it in lecture 3.
 # Ask yourself: if I judged an applicant from these features alone, which figures would
 # worry me, and how much?
-
 class GasparBaselineScorer(Scorer):
-    """Hand-built credit risk estimate incorporating debt ratio, revolving utilisation, and severe lateness."""
+    """Hand-built credit risk estimate
+    incorporating debt ratio, revolving utilisation,
+     and severe lateness."""
 
     @property
     def model_version(self) -> str:
@@ -105,19 +108,9 @@ class GasparBaselineScorer(Scorer):
 
     def probability_of_default(self, features: FeatureVector) -> float:
         debt_ratio = features.debt_ratio if features.debt_ratio is not None else 0.50
-        revolving_util = (
-            features.rev_util
-            if features.rev_util is not None
-            else 0.30
-        )
+        revolving_util = features.rev_util if features.rev_util is not None else 0.30
         late_90 = features.late_90 if features.late_90 is not None else 0.0
 
-        raw_prob = (
-            0.03
-            + (debt_ratio * 0.35)
-            + (revolving_util * 0.25)
-            + (late_90 * 0.18)
-        )
+        raw_prob = 0.03 + (debt_ratio * 0.35) + (revolving_util * 0.25) + (late_90 * 0.18)
 
         return max(0.0, min(1.0, round(raw_prob, 4)))
-
