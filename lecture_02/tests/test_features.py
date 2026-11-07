@@ -20,6 +20,8 @@ def test_debt_ratio_is_debt_over_income():
     features = build_features(entered)
 
     assert features.debt_ratio == 0.2
+
+
 def test_missing_income_gives_none_debt_ratio():
     entered = CaseWorkerInput(
         age=34,

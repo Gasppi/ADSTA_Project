@@ -30,6 +30,7 @@ def date_of_birth_accuracy(rows: pd.DataFrame) -> float:
     """The share of documents whose date of birth was read exactly."""
     return float((rows["read"] == rows["expected"]).mean())
 
+
 CENTIMES: Final = Decimal("0.01")
 
 
