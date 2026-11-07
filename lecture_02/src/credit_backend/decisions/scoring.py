@@ -102,19 +102,9 @@ class GasparBaselineScorer(Scorer):
 
     def probability_of_default(self, features: FeatureVector) -> float:
         debt_ratio = features.debt_ratio if features.debt_ratio is not None else 0.50
-        revolving_util = (
-            features.rev_util
-            if features.rev_util is not None
-            else 0.30
-        )
+        revolving_util = features.rev_util if features.rev_util is not None else 0.30
         late_90 = features.late_90 if features.late_90 is not None else 0.0
 
-        raw_prob = (
-            0.03
-            + (debt_ratio * 0.35)
-            + (revolving_util * 0.25)
-            + (late_90 * 0.18)
-        )
+        raw_prob = 0.03 + (debt_ratio * 0.35) + (revolving_util * 0.25) + (late_90 * 0.18)
 
         return max(0.0, min(1.0, round(raw_prob, 4)))
-
