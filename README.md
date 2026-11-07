@@ -162,6 +162,8 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 - The revision is pinned because a tag can move, and the same checkpoint must give the same reading.
 - TODO (Desmond): no other model is compared in this entry. If one was tried, add its scores here.
 
+**First run (Task 4):** I sent both sample documents to the extraction service with this model. Both returned 200 (success), so the model loads and reads a document from start to finish. Task 5 then measured it on all 40 applicants (below).
+
 **Metrics** (all 40 sample applicants, `scripts/evaluate_extraction.py`):
 
 | Field | Metric | Result |
