@@ -96,7 +96,7 @@ commit: 715cbd9
 - `PercentileClipper` learns its limits on the training set only: p99 for `rev_util` and `monthly_inc`, p95 for `debt_ratio`, because all three are heavily right-skewed. Then `StandardScaler`, fitted on train only.
 - Not `RobustScaler`: the `late_*` columns are mostly zeros, so their IQR is 0.
 - data.py drops 2 duplicate rows and 88 rows with the codes 96/98 in any late_* column before the split, so the clipper and scaler never see them.
-- Reason for p95 on `debt_ratio`: <Desmond's answer>.
+- p95 for `debt_ratio`: its 99th percentile is 607, about 480 times its 95th percentile (1.264), so p99 would keep the extreme values; p95 cuts them back.
 
 ## Task 3: metric
 - First choice was ROC AUC. After Desmond's review it changed to **F1 at the fixed 0.5 threshold**: the task requires a metric that judges models at the 0.5 line, and AUC ignores it. F1 fits because both a missed default and a wrongly refused applicant are costly.
