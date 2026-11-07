@@ -2,8 +2,8 @@
 model: model-a
 registry: wandb-registry-model/model-a
 version: v5
-run: <run id of the random-forest run behind v5, from the W&B Overview>
-commit: <commit hash from the same Overview>
+run: lohcaawu (random-forest-run)
+commit: 715cbd9
 ---
 
 # Model A: probability of default
