@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 from credit_training import metrics
 from credit_training.data import SEED, load_splits
 from credit_training.preprocessing import build_preprocessing
-from credit_training.tracking import TrainedModel, log_model, start_run, log_details
+from credit_training.tracking import TrainedModel, log_details, log_model, start_run
 
 NAME: Final = "logistic-regression"
 PARAMS: Final[dict[str, Any]] = {"C": 1.0, "class_weight": None}
