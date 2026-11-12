@@ -4,8 +4,8 @@ Status (update when you change a part):
 - [x] 1. User and task
 - [x] 2. Flow and design guidelines
 - [x] 3. Interface sheets (from `contracts.py` and `router.py`)
-- [ ] 4. States of the screen
-- [ ] 5. Acceptance criteria
+- [x] 4. States of the screen
+- [x] 5. Acceptance criteria
 - [ ] Open decisions (bottom of this file)
 
 ## 1. User and task
@@ -45,6 +45,8 @@ In that case the page sends `extraction_checkpoint` as `null`.
   filled with 0, `false` or a guess.
 - Number fields start empty, never with a prefilled number, so an empty field cannot look like an answer.
 - Income is sent as `Money` with currency `CHF` and the period shown on the screen.
+- The loss certificate has three choices: none recorded (`false`), recorded (`true`) and could not be
+  read (`null`). Nothing is preselected.
 - Reasons are shown in plain words:
 
 | Reason code | Text on the page |
@@ -137,6 +139,42 @@ Answer 200 `{"status": "ok"}`. Use it to check that the backend is up.
 
 Answer 200, a list of stored decisions, newest first. Note: the stored record spells
 `dependents`, the request spells `dependants`.
+
+## 4. States of the screen
+
+| State | When | What the page shows |
+|---|---|---|
+| Empty | at the start | No documents. Every number field is empty. Decide is disabled until every required field has a value. |
+| Waiting | a call is running | "Reading the documents..." during `POST /extractions`. "Deciding..." during `POST /decisions`. |
+| Not read | a value came back `null` | "could not be read" in a highlight, next to the field. The case worker can correct it or leave it. |
+| Service down | a call failed | A message that says what failed and what happened. See the table below. |
+| The answer | `POST /decisions` returned 200 | Outcome, reasons in words, the model-written sentence with its label, and the decision number. |
+
+Every answer the page can get has its own sentence:
+
+| What comes back | What the page shows |
+|---|---|
+| no answer in time, or no connection | "The backend does not answer. Nothing was decided." |
+| 422 | "A field is missing or does not fit." The page names the field from `detail`. |
+| 503 from `POST /extractions` | "The extraction service is not available. Try again, or enter the values by hand." |
+| 500 or 503 from `POST /decisions` | "The backend failed. Nothing was decided." |
+| 200 | The outcome, as in "The answer" above. |
+
+## 5. Acceptance criteria
+
+| # | Requirement | How to check it |
+|---|---|---|
+| 1 | A case worker completes a decision through the page. | Upload both sample documents, correct if needed, fill the rest, press Decide. Outcome, reasons and a decision number appear. `GET /decisions/recent` lists that decision. |
+| 2 | A value nobody could read says so. | With a document whose loss certificate cannot be read, or by choosing "could not be read", the page shows "could not be read". The answer's reasons contain `loss_certificate_unknown`. |
+| 3 | Empty is never sent as zero. | Number fields start empty. Decide stays disabled until required fields are filled. An unread income is sent as `null`, and the reasons contain `income_unknown`. |
+| 4 | Text from a model is labelled. | The sentence in `wording` shows "Written by a model and not checked by a person." If `wording` is `null`, no sentence and no label appear. |
+| 5 | The page says when the extraction service is down. | Run `docker compose stop extraction`, then upload. The page shows the 503 sentence, and the case worker can still enter every value by hand and decide. |
+| 6 | The page says when the backend is down. | Run `docker compose stop backend`, then press Decide. After the timeout the page shows "The backend does not answer. Nothing was decided." No record is created. |
+| 7 | One `docker compose up` starts the page too. | On a fresh start the page opens at `localhost:8501`, calls `http://backend:8000`, and starts after the backend is healthy. |
+| 8 | Utilisation is sent as a share. | Entering 30 percent sends 0.30 (adjust once the open decision is made). |
+| 9 | One click makes one decision. | A double click on Decide creates one record (adjust once the open decision is made). |
+| 10 | The page never decides. | The page code contains no scoring, no threshold and no probability. Check by reading the code. |
+| 11 | Different people trigger a warning. | If `same_applicant` is `false`, a warning appears (proposal). |
 
 ## Open decisions (to settle together, then write into the decision log)
 
