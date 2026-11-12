@@ -171,15 +171,26 @@ Every answer the page can get has its own sentence:
 | 5 | The page says when the extraction service is down. | Run `docker compose stop extraction`, then upload. The page shows the 503 sentence, and the case worker can still enter every value by hand and decide. |
 | 6 | The page says when the backend is down. | Run `docker compose stop backend`, then press Decide. After the timeout the page shows "The backend does not answer. Nothing was decided." No record is created. |
 | 7 | One `docker compose up` starts the page too. | On a fresh start the page opens at `localhost:8501`, calls `http://backend:8000`, and starts after the backend is healthy. |
-| 8 | Utilisation is sent as a share. | Entering 30 percent sends 0.30 (adjust once the open decision is made). |
+| 8 | Utilisation is asked for and sent as a share. | The field is labelled "as a share, 0.30 is 30%". Entering 0.30 sends 0.30. Entering a value above 1, such as 30, shows the warning "That is above 1 (100%). Did you mean 0.30?" |
 | 9 | One click makes one decision. | A double click on Decide creates one record (adjust once the open decision is made). |
 | 10 | The page never decides. | The page code contains no scoring, no threshold and no probability. Check by reading the code. |
 | 11 | Different people trigger a warning. | If `same_applicant` is `false`, a warning appears (proposal). |
 
+## Decisions made (to copy into the decision log)
+
+- Utilisation is asked for as a share (0.30 is 30%), as in the lecture sketch, so the page does no
+  conversion. Because the backend has no upper limit, the page shows a soft warning above 1.
+  Values above 1 are still allowed, since an applicant can be over the credit limit.
+
 ## Open decisions (to settle together, then write into the decision log)
 
-- Does the page ask for utilisation as percent and divide by 100, or ask for the share?
-- How long does the page wait for each call (timeout)? Model C can take 90 s to 3 min on a cold start.
+- How long does the page wait for each call (timeout)? Decided: measure first. The page timeout must be
+  longer than the backend's worst case, or the page gives up while the backend is still working.
+  Known: the backend gives Model C 60 s and then answers without a sentence. A cold start of Model C
+  can take 90 s to 3 min. Not yet measured: the time of `POST /extractions`, and the time of
+  `POST /decisions` apart from Model C. To do (Gaspar, on the running system): time both calls once
+  right after `docker compose up` (cold) and once again (warm), for example with
+  `curl -s -o /dev/null -w "%{time_total}\n" ...`, then set each timeout from the result plus a margin.
 - Does the Decide button disable itself while waiting, so a double click makes one decision?
 - Does the page show recent decisions?
 - Is age typed in, or calculated from the date of birth that was read?
