@@ -40,8 +40,9 @@ probability and never guesses a value.
    decision number, time, outcome and reasons in words. It loads when the page opens and refreshes
    after each decision.
 
-If the extraction service is down, the case worker can still enter every value by hand and decide.
-In that case the page sends `extraction_checkpoint` as `null`.
+Every decision rests on documents that were read. If the extraction service is down, the page says
+so and the case worker cannot decide until it works again. The page always sends the `checkpoint`
+that step 1 returned.
 
 ### Rules that follow from the contract
 
@@ -62,8 +63,9 @@ In that case the page sends `extraction_checkpoint` as `null`.
 
 - The sentence in `wording` is labelled "Written by a model and not checked by a person." If
   `wording` is `null`, the page shows the reasons only and no sentence.
-- If `same_applicant` is `false`, the page shows a warning that the documents name different
-  people. The case worker still decides what to do (proposal).
+- If `same_applicant` is `false`, the page says that the documents name different people and keeps
+  Decide disabled. The case worker must upload other documents. If `same_applicant` is `null`, the
+  page says "could not be checked" and does not block.
 
 ### Design guidelines applied (Amershi et al., 2019)
 
@@ -103,7 +105,8 @@ Errors: 422 if a file is missing. 503 if the extraction service is down, with
 ### POST /decisions (page to backend, JSON)
 
 Body: `{"entered": {...}, "extraction_checkpoint": string or null}`.
-Send the `checkpoint` that the extraction returned. Send `null` if no documents were read.
+Send the `checkpoint` that the extraction returned. The backend also accepts `null`, but our page
+always has read documents, so it always sends the checkpoint.
 
 | Field in `entered` | Type | Unit or range | When empty |
 |---|---|---|---|
@@ -149,7 +152,7 @@ Note: the stored record spells `dependents`, the request spells `dependants`.
 
 | State | When | What the page shows |
 |---|---|---|
-| Empty | at the start | No documents. Every number field is empty. Decide is disabled until every required field has a value. |
+| Empty | at the start | No documents. Every number field is empty. Decide is disabled until the documents were read and every required field has a value. |
 | Waiting | a call is running | "Reading the documents..." during `POST /extractions`. "Deciding..." during `POST /decisions`. |
 | Not read | a value came back `null` | "could not be read" in a highlight, next to the field. The case worker can correct it or leave it. |
 | Service down | a call failed | A message that says what failed and what happened. See the table below. |
@@ -161,7 +164,7 @@ Every answer the page can get has its own sentence:
 |---|---|
 | no answer in time, or no connection | "The backend does not answer. Nothing was decided." |
 | 422 | "A field is missing or does not fit." The page names the field from `detail`. |
-| 503 from `POST /extractions` | "The extraction service is not available. Try again, or enter the values by hand." |
+| 503 from `POST /extractions` | "The extraction service is not available. Try again later. Nothing can be decided without the documents." |
 | 500 or 503 from `POST /decisions` | "The backend failed. Nothing was decided." |
 | 200 | The outcome, as in "The answer" above. |
 | the recent list cannot be loaded | "The list of recent decisions could not be loaded." The rest of the page keeps working. |
@@ -175,13 +178,13 @@ Every answer the page can get has its own sentence:
 | 2 | A value nobody could read says so. | With a document whose loss certificate cannot be read, or by choosing "could not be read", the page shows "could not be read". The answer's reasons contain `loss_certificate_unknown`. |
 | 3 | Empty is never sent as zero. | Number fields start empty. Decide stays disabled until required fields are filled. An unread income is sent as `null`, and the reasons contain `income_unknown`. |
 | 4 | Text from a model is labelled. | The sentence in `wording` shows "Written by a model and not checked by a person." If `wording` is `null`, no sentence and no label appear. |
-| 5 | The page says when the extraction service is down. | Run `docker compose stop extraction`, then upload. The page shows the 503 sentence, and the case worker can still enter every value by hand and decide. |
+| 5 | The page says when the extraction service is down. | Run `docker compose stop extraction`, then upload. The page shows the 503 sentence and Decide stays disabled. After `docker compose start extraction` (it may take a while to become healthy), uploading works again. |
 | 6 | The page says when the backend is down. | Run `docker compose stop backend`, then press Decide. After the timeout the page shows "The backend does not answer. Nothing was decided." No record is created. |
 | 7 | One `docker compose up` starts the page too. | On a fresh start the page opens at `localhost:8501`, calls `http://backend:8000`, and starts after the backend is healthy. |
 | 8 | Utilisation is asked for and sent as a share. | The field is labelled "as a share, 0.30 is 30%". Entering 0.30 sends 0.30. Entering a value above 1, such as 30, shows the warning "That is above 1 (100%). Did you mean 0.30?" |
 | 9 | One click makes one decision. | While a decision is running, Decide is disabled. Press it twice quickly. `GET /decisions/recent` shows one new record, not two. |
 | 10 | The page never decides. | The page code contains no scoring, no threshold and no probability. Check by reading the code. |
-| 11 | Different people trigger a warning. | If `same_applicant` is `false`, a warning appears (proposal). |
+| 11 | Documents of different people block the decision. | If `same_applicant` is `false`, the page says so and Decide stays disabled. Uploading matching documents enables it again. If `same_applicant` is `null`, the page says "could not be checked" and Decide stays enabled. |
 | 12 | The page lists the last 20 decisions. | After a decision, the list shows it at the top with its number, time, outcome and reasons. With `docker compose stop backend`, the page says the list could not be loaded. |
 
 ## Decisions made (to copy into the decision log)
@@ -192,6 +195,15 @@ Every answer the page can get has its own sentence:
 - Double click: the page disables Decide while a decision is running, so one click makes one record.
   The backend is unchanged. `POST /decisions` is not idempotent, so another caller, such as the
   `/docs` page, can still create two records by sending twice. That is a known limit.
+- Different people: the page blocks Decide when `same_applicant` is `false`. The only way on is to
+  upload other documents. Known limit: if Model B misreads a name, a legitimate case is blocked
+  until other files are found. The backend does not use `same_applicant`, so this rule lives only
+  in the page.
+- No manual entry: the page requires the documents. If the extraction service is down, nothing can be
+  decided until it works again. Known limit: one failing service stops all decisions, although the
+  backend itself would accept an application without documents.
+- Age: the case worker types it. The date of birth that Model B read is shown beside it for a
+  cross-check, and an unread date of birth blocks nothing. The page does no date calculation.
 - Recent decisions: the page shows the last 20 (number, time, outcome, reasons), refreshed after each
   decision. This goes beyond the lecture's six steps and is our own addition.
 
@@ -204,6 +216,3 @@ Every answer the page can get has its own sentence:
   `POST /decisions` apart from Model C. To do (Gaspar, on the running system): time both calls once
   right after `docker compose up` (cold) and once again (warm), for example with
   `curl -s -o /dev/null -w "%{time_total}\n" ...`, then set each timeout from the result plus a margin.
-- Is age typed in, or calculated from the date of birth that was read?
-- Confirm the two proposals: the warning when `same_applicant` is `false`, and manual entry when
-  extraction is down.
