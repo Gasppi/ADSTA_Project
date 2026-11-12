@@ -6,7 +6,7 @@ Status (update when you change a part):
 - [x] 3. Interface sheets (from `contracts.py` and `router.py`)
 - [x] 4. States of the screen
 - [x] 5. Acceptance criteria
-- [ ] Open decisions (bottom of this file)
+- [x] Decisions made (near the bottom of this file). The timeouts are provisional.
 
 ## 1. User and task
 
@@ -101,6 +101,7 @@ Answer 200, `ExtractionResult`. Every value is `null` when it could not be read.
 
 Errors: 422 if a file is missing. 503 if the extraction service is down, with
 `{"detail": "The Information Extraction Service is not available. Try again."}`.
+Timeout of the page: 120 s (provisional, not measured).
 
 ### POST /decisions (page to backend, JSON)
 
@@ -137,6 +138,7 @@ Answer 200, `DecisionResponse`:
 | `record_id` | integer | id of the stored decision |
 
 Errors: 422 if the body does not fit. Every POST creates a new record, so two clicks make two decisions.
+Timeout of the page: 90 s (provisional). The backend gives Model C 60 s and then answers without a sentence.
 
 ### GET /health
 
@@ -179,7 +181,7 @@ Every answer the page can get has its own sentence:
 | 3 | Empty is never sent as zero. | Number fields start empty. Decide stays disabled until required fields are filled. An unread income is sent as `null`, and the reasons contain `income_unknown`. |
 | 4 | Text from a model is labelled. | The sentence in `wording` shows "Written by a model and not checked by a person." If `wording` is `null`, no sentence and no label appear. |
 | 5 | The page says when the extraction service is down. | Run `docker compose stop extraction`, then upload. The page shows the 503 sentence and Decide stays disabled. After `docker compose start extraction` (it may take a while to become healthy), uploading works again. |
-| 6 | The page says when the backend is down. | Run `docker compose stop backend`, then press Decide. After the timeout the page shows "The backend does not answer. Nothing was decided." No record is created. |
+| 6 | The page says when the backend is down. | Run `docker compose stop backend`, then press Decide. After the timeout (90 s, provisional) the page shows "The backend does not answer. Nothing was decided." No record is created. |
 | 7 | One `docker compose up` starts the page too. | On a fresh start the page opens at `localhost:8501`, calls `http://backend:8000`, and starts after the backend is healthy. |
 | 8 | Utilisation is asked for and sent as a share. | The field is labelled "as a share, 0.30 is 30%". Entering 0.30 sends 0.30. Entering a value above 1, such as 30, shows the warning "That is above 1 (100%). Did you mean 0.30?" |
 | 9 | One click makes one decision. | While a decision is running, Decide is disabled. Press it twice quickly. `GET /decisions/recent` shows one new record, not two. |
@@ -206,13 +208,15 @@ Every answer the page can get has its own sentence:
   cross-check, and an unread date of birth blocks nothing. The page does no date calculation.
 - Recent decisions: the page shows the last 20 (number, time, outcome, reasons), refreshed after each
   decision. This goes beyond the lecture's six steps and is our own addition.
+- Timeouts (provisional): 90 s for `POST /decisions` and 120 s for `POST /extractions`. The 90 s is
+  the 60 s that the backend gives Model C plus a margin of 30 s that is not measured. The 120 s is a
+  guess, because the time of `POST /extractions` has never been measured. The page reads both values
+  from environment variables, so changing them needs no code change.
 
-## Open decisions (to settle together, then write into the decision log)
+## To do after the merge
 
-- How long does the page wait for each call (timeout)? Decided: measure first. The page timeout must be
-  longer than the backend's worst case, or the page gives up while the backend is still working.
-  Known: the backend gives Model C 60 s and then answers without a sentence. A cold start of Model C
-  can take 90 s to 3 min. Not yet measured: the time of `POST /extractions`, and the time of
-  `POST /decisions` apart from Model C. To do (Gaspar, on the running system): time both calls once
-  right after `docker compose up` (cold) and once again (warm), for example with
-  `curl -s -o /dev/null -w "%{time_total}\n" ...`, then set each timeout from the result plus a margin.
+- Measure the timeouts (Gaspar, on the running system). Time `POST /extractions` and `POST /decisions`
+  once right after `docker compose up` (cold) and once again (warm), for example with
+  `curl -s -o /dev/null -w "%{time_total}\n" ...`. A page timeout must be longer than the backend's
+  worst case, or the page gives up while the backend is still working. Replace the provisional values
+  in this file and in `docker-compose.yaml`, and record the measured times in the decision log.
