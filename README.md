@@ -160,7 +160,7 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 **Why:**
 - It is a LayoutLM model for the Hub task Document Question Answering, as the task hint suggests, and it works with what `reader.py` hands it.
 - The revision is pinned because a tag can move, and the same checkpoint must give the same reading.
-- TODO (Desmond): no other model is compared in this entry. If one was tried, add its scores here.
+- A second model was compared on 2026-11-13, see "Comparison" below. The decision stays with this model.
 
 **First run (Task 4):** I sent both sample documents to the extraction service with this model. Both returned 200 (success), so the model loads and reads a document from start to finish. Task 5 then measured it on all 40 applicants (below).
 
@@ -186,6 +186,23 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 - The loss certificate is `nan` for `centred` and `dense`. Those layouts have no open certificate, so there is nothing to measure.
 - Because the name is read wrongly in one case of four, a case worker confirms every figure before a decision. The backend never decides on what Model B read.
 
+**Comparison (Task 5, Gaspar, 2026-11-13):** the same 40 applicants and the same script, run on Gaspar's machine. The first column reproduces the numbers above exactly.
+
+| Field | `impira/layoutlm-document-qa` (kept) | `impira/layoutlm-invoices` |
+|---|---|---|
+| gross, exact match | 0.900 | 0.950 |
+| gross, mean absolute error | 639.198 CHF | 162.320 CHF |
+| applicant name | 0.750 | 0.950 |
+| date of birth | 1.000 | 1.000 |
+| open loss certificate, precision and recall | 1.0 and 1.0 | 1.0 and 1.0 |
+| no-answer rate | 0 | 0 |
+
+- `layoutlm-invoices` is pinned to `fdf56765f8bdf236b2bd45d23347066475aa730a`. It has the same architecture (`layoutlm`, `LayoutLMForQuestionAnswering`), about 0.1 billion weights and a safetensors file, so it works with `reader.py` unchanged.
+- It improves the layouts that failed: `coded` gross 0.750 to 0.875 (error 2236.6 to 61.6 CHF), `letterhead` gross 0.750 to 0.875 (error 959.4 to 750.0 CHF), and the names in `centred` and `dense` (0.625 and 0.500 to 1.000). The names in `letter` rise from 0.625 to 0.750. One document moves a layout by 0.125, so single layouts are noisy, but the overall name gain is large.
+- **Licences:** `layoutlm-document-qa` is MIT. `layoutlm-invoices` is `cc-by-nc-sa-4.0` (non-commercial, share-alike), which would block a commercial deployment.
+
+**Decision:** the team keeps `impira/layoutlm-document-qa`. It is the model already in the project, its MIT licence has no use restriction, and a case worker confirms every figure before a decision. `layoutlm-invoices` reads better on this data and is the first candidate if its licence is acceptable.
+
 ### 2026-10-31: Model C (wording)
 
 **Decision:** `llama3.2:3b`, run by Ollama. The tag comes from `MODEL_C`.
@@ -201,7 +218,23 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 
 **Options:** `temperature` 0 and `seed` 42, so that the same decision gets the same wording. `num_predict` 120 stops a long answer. `num_ctx` 2048 keeps the memory small.
 
-**Result so far (not yet verified):** the wording itself has not been seen. On Desmond's laptop the first call timed out after 60 s (`No wording from llama3.2:3b: ReadTimeout`). The decision still came back with code 200 and was stored, without wording. At that moment 1.2 GB of the 8 GB were free (`systeminfo`), and Docker had read only 1.12 GB of the model in 30 minutes. TODO (Gaspar): run it on a machine with enough memory and add the first wordings here.
+**Result (Gaspar, 2026-11-08, Mac with 8 GB, Docker limit 7.75 GiB, CPU only):**
+- Ollama showed `llama3.2:3b` at 2.9 GB, 100% CPU. With extraction running and swap nearly full (16.4 of 17.4 GB), the first cold load took about 2.5 minutes and generation ran at 0.46 tokens per second.
+- After stopping extraction, generation rose to 5.04 tokens per second. A cold load still took 90 seconds to 3 minutes, longer than the 60 s timeout.
+- Six decisions in a row timed out (`No wording from llama3.2:3b: ReadTimeout`) after the model had been loaded with `ollama run`, whose context is 4096. After loading it with the backend's own `num_ctx` of 2048, the wording arrived. A context mismatch fits this, but memory pressure also changed, so it is the likely cause and not a proven one.
+- Each timed-out decision still returned 200 and was stored without wording, as Task 7e asks.
+- Ollama needs the model loaded and free memory, so on an 8 GB machine run Model B and Model C one at a time.
+
+**Prompt fix (PR #24).** The first wordings called an open loss certificate "a loss of certificate", which reads as a lost document. The system prompt now explains each reason code.
+
+| Reason | Before | After |
+|---|---|---|
+| `loss_certificate_open` | "refused due to a loss of certificate" | "refused due to an outstanding loss certificate" |
+| `default_probability_above_threshold` | "...a default probability above the threshold" | "...above the accepted limit" |
+| `income_unknown` | "...unknown income" | "...unknown monthly income" |
+| `loss_certificate_unknown` | "...an unknown loss certificate" | "...unknown debt records" |
+
+A longer meaning for `loss_certificate_unknown` fixed that last wording but made the open case say the certificate "could not be read". The two meanings are too close for a 3B model, so the shorter version stayed. `qwen2.5:3b` was not tried.
 
 ### 2026-10-31: Backend (Task 7)
 
@@ -210,6 +243,7 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 - **7c, table.** One row for every decision: the six features named like `FeatureVector`, `has_loss_certificate`, `extraction_checkpoint`, `default_probability`, `model_version`, `outcome`, `reasons` (JSON), `wording`. An unknown value is `NULL`, never 0. My first version used wrong feature names, and `POST /decisions` answered 500 (`'dependents' is an invalid keyword argument`). The unit tests had not stored a real feature vector. `tests/test_record_features.py` now does.
 - **7d, service.** After the rules, Model C words the decision, but only if `MODEL_C` is set. Then the row is stored, and the answer carries its id as `record_id`.
 - **7e, timeouts.** The extraction service gets connect 5 s, read 180 s, write 30 s, pool 5 s, and no retry: a second try would double the wait, and the case worker can send the documents again. Any failure (no answer, too late, error status, unexpected answer) becomes a 503 with a clear message. Ollama gets 60 s. If it is down, too slow or has no model, the decision goes on without wording, and a warning names the cause. The 180 s and 60 s are my choices and are not measured.
+- **Checks run by Gaspar (2026-11-08 to 2026-11-13).** `GET /decisions/recent` lists the stored decisions, with `NULL` for unknown values. With Ollama stopped, `POST /decisions` returns 200 without wording and logs `ConnectionError`. With extraction stopped, `POST /extractions` through the backend answers 503. Decisions survive `docker compose down` and `up` (without `-v`).
 
 ### 2026-10-31: Compose and images
 
