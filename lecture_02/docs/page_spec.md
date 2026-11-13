@@ -146,17 +146,17 @@ Answer 200, `DecisionResponse`:
 |---|---|---|
 | `outcome` | `approved` or `refused` | decided by the backend rules, never by the page |
 | `reasons` | list of reason codes | `default_probability_above_threshold`, `loss_certificate_open`, `loss_certificate_unknown`, `income_unknown`. Empty when `approved`, at least one when `refused` |
-| `wording` | string or null | sentence written by Model C. `null` if Model C is not configured, failed or timed out. A timeout still returns 200 without a sentence |
+| `wording` | string or null | sentence written by Model C. `null` if Model C is not configured (`MODEL_C` missing or empty), failed or timed out. A timeout still returns 200 without a sentence |
 | `features` | object | six numbers: `age`, `dependents`, `rev_util`, `late_90`, `monthly_inc` (CHF per month) and `debt_ratio` (monthly debt obligations divided by monthly income). The last two are `null` when income is `null` |
 | `default_probability` | number or null | probability of default. `null` when a registered Model A cannot score because income is missing. The baseline never returns `null` |
-| `model_version` | string | which scorer decided, as `collection:version` (for example `model-a:v5`), or `gaspar-baseline-v1` when no `MODEL_A` is set |
+| `model_version` | string | which scorer decided, as `collection:version` (for example `model-a:v5`), or `gaspar-baseline-v1` when `MODEL_A` is missing or empty |
 | `record_id` | integer | id of the stored decision |
 
 The outcome is `refused` when there is at least one reason and `approved` when there is none.
 
 Errors: 422 if the body does not fit. 500 if scoring or storing fails (read from `service.py`, where
 nothing handles it; not seen in practice). An income of 0 currently gives a 500 until the backend
-rejects it with a 422 (read from the code, to be confirmed on the running system). This endpoint never
+rejects it with a 422 (reproduced with a copy of the code, to be confirmed on the running system). This endpoint never
 returns the extraction 503, because `decide()` does not call the extraction service. Every POST
 creates a new record, so two clicks make two decisions. If the page gives up first, the backend keeps
 working and may still store the decision.
@@ -172,8 +172,9 @@ Answer 200, a list of stored decisions. The page uses `id`, `created_at`, `outco
 The backend returns the list newest first (`order_by(DecisionRecord.id.desc())` in `records.py`).
 The page keeps that order.
 Note: the stored record spells `dependents`, the request spells `dependants`.
-The page always sends `limit=20`. The code does not check the range of `limit`, so other values are
-not specified (not verified).
+The page always sends `limit=20`. The code does not check `limit`: it passes it to the database
+unchanged (`records.py`). A negative value probably gives a 500 on PostgreSQL (known behaviour of
+PostgreSQL, not run here).
 
 ## 4. States of the screen
 
@@ -238,8 +239,9 @@ Every answer the page can get has its own sentence:
 - Recent decisions: the page shows the last 20 (number, time, outcome, reasons), refreshed after each
   decision. This goes beyond the lecture's six steps and is our own addition.
 - Income above 0: the page refuses an income of 0 or less. The backend should also reject it with a
-  422 (`Money.amount` above 0, with a test), requested from Gaspar. Known limit: an applicant with no
-  income cannot be entered as 0. The page can only send `null`, so the decision is refused with the
+  422 (on the monthly amount, with a test), requested from Gaspar. The monthly amount matters because
+  an annual 0.05 rounds to 0.00 per month and divides by zero too, so the page rule "above 0" alone
+  does not cover it. Known limit: an applicant with no income cannot be entered as 0. The page can only send `null`, so the decision is refused with the
   reason `income_unknown`.
 - Timeouts (provisional): 90 s for `POST /decisions` and 200 s for `POST /extractions`. The 90 s is
   the 60 s that the backend gives Model C plus a margin of 30 s that is not measured. The 200 s is the
@@ -249,11 +251,13 @@ Every answer the page can get has its own sentence:
 
 ## To do after the merge
 
-- Backend (Gaspar): reject an income of 0 or less with a 422 and add a test. First confirm, with one
-  request on the running system, that an income of 0 gives a 500 now. Then remove the 500 note for
-  income 0 in the sheet above.
-- Not verified yet: what `GET /decisions/recent` does for a `limit` outside the normal range, and
-  whether an empty `MODEL_C` setting becomes `None` (`config.py` was not read).
+- Backend (Gaspar): reject an income whose monthly amount is 0 or less with a 422 and add a test.
+  A copy of the code raised `ZeroDivisionError` for 0 monthly, 0 annual and 0.05 annual (which rounds
+  to 0.00 per month), and gave a negative `debt_ratio` for -100 monthly. First confirm with one request
+  on the running system that an income of 0 gives a 500 now. Then remove the 500 note for income 0 in
+  the sheet above.
+- Not verified yet: what `GET /decisions/recent` does for a negative `limit` (probably a 500 on
+  PostgreSQL). Not needed by the page, which always sends 20.
 - Measure the timeouts (Gaspar, on the running system). Time `POST /extractions` and `POST /decisions`
   once right after `docker compose up` (cold) and once again (warm), for example with
   `curl -s -o /dev/null -w "%{time_total}\n" ...`. A page timeout must be longer than the backend's
