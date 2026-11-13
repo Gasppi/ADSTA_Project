@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from credit_backend.contracts import (
     DecisionRecordRead,
@@ -38,6 +38,7 @@ def create_decision(
 
 @router.get("/decisions/recent")
 def recent_decisions(
-    service: Annotated[DecisionService, Depends(get_service)], limit: int = 20
+    service: Annotated[DecisionService, Depends(get_service)],
+    limit: Annotated[int, Query(ge=1, le=1000)] = 20,
 ) -> list[DecisionRecordRead]:
     return service.recent(limit)
