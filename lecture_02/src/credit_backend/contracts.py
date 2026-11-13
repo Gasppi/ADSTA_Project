@@ -5,7 +5,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum, auto
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 MONTHS_PER_YEAR: Final = 12
 RAPPEN: Final = Decimal("0.01")
@@ -71,6 +71,15 @@ class CaseWorkerInput(BaseModel):
 
     has_loss_certificate: bool | None = None
     """Whether the register records an open loss certificate, or None if nobody could read it."""
+
+    @field_validator("monthly_income")
+    @classmethod
+    def income_must_be_above_zero(cls, income: Money | None) -> Money | None:
+        """Zero would divide by zero in the debt ratio, and a negative income means nothing."""
+        if income is not None and income.as_monthly().amount <= 0:
+            message = "The monthly income must be above 0, or None if it is unknown."
+            raise ValueError(message)
+        return income
 
 
 SAMPLE_REQUEST: Final[dict[str, JsonValue]] = {
