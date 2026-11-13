@@ -50,6 +50,10 @@ that step 1 returned.
   filled with 0, `false` or a guess.
 - Number fields start empty, never with a prefilled number, so an empty field cannot look like an answer.
 - Income is sent as `Money` with currency `CHF` and the period shown on the screen.
+- An empty income field means nobody could establish the income. It is sent as `null`, never as 0.
+  If the case worker clears an income that was read, it is sent as `null` too.
+- The income amount cannot be negative. The page refuses a negative amount, because the backend's
+  `Money` has no lower limit.
 - The loss certificate has three choices: none recorded (`false`), recorded (`true`) and could not be
   read (`null`). Nothing is preselected.
 - Reasons are shown in plain words:
@@ -101,7 +105,8 @@ Answer 200, `ExtractionResult`. Every value is `null` when it could not be read.
 
 Errors: 422 if a file is missing. 503 if the extraction service is down, with
 `{"detail": "The Information Extraction Service is not available. Try again."}`.
-Timeout of the page: 120 s (provisional, not measured).
+Timeout of the page: 200 s (provisional, not measured). The backend waits up to 180 s for the
+extraction service (`read=180.0` in `clients/http.py`), so the page must wait longer than that.
 
 ### POST /decisions (page to backend, JSON)
 
@@ -147,7 +152,8 @@ Answer 200 `{"status": "ok"}`. Use it to check that the backend is up.
 ### GET /decisions/recent?limit=20 (page to backend)
 
 Answer 200, a list of stored decisions. The page uses `id`, `created_at`, `outcome` and `reasons`.
-The order of the list is not stated in the code, so the page sorts by `created_at`, newest first.
+The backend returns the list newest first (`order_by(DecisionRecord.id.desc())` in `records.py`).
+The page keeps that order.
 Note: the stored record spells `dependents`, the request spells `dependants`.
 
 ## 4. States of the screen
@@ -181,7 +187,7 @@ Every answer the page can get has its own sentence:
 | 3 | Empty is never sent as zero. | Number fields start empty. Decide stays disabled until required fields are filled. An unread income is sent as `null`, and the reasons contain `income_unknown`. |
 | 4 | Text from a model is labelled. | The sentence in `wording` shows "Written by a model and not checked by a person." If `wording` is `null`, no sentence and no label appear. |
 | 5 | The page says when the extraction service is down. | Run `docker compose stop extraction`, then upload. The page shows the 503 sentence and Decide stays disabled. After `docker compose start extraction` (it may take a while to become healthy), uploading works again. |
-| 6 | The page says when the backend is down. | Run `docker compose stop backend`, then press Decide. After the timeout (90 s, provisional) the page shows "The backend does not answer. Nothing was decided." No record is created. |
+| 6 | The page says when the backend is down. | Run `docker compose stop backend`, then press Decide. The page shows "The backend does not answer. Nothing was decided." right away (a stopped backend refuses the connection; the 90 s timeout only applies to a backend that is up but slow). No record is created. |
 | 7 | One `docker compose up` starts the page too. | On a fresh start the page opens at `localhost:8501`, calls `http://backend:8000`, and starts after the backend is healthy. |
 | 8 | Utilisation is asked for and sent as a share. | The field is labelled "as a share, 0.30 is 30%". Entering 0.30 sends 0.30. Entering a value above 1, such as 30, shows the warning "That is above 1 (100%). Did you mean 0.30?" |
 | 9 | One click makes one decision. | While a decision is running, Decide is disabled. Press it twice quickly. `GET /decisions/recent` shows one new record, not two. |
@@ -208,9 +214,10 @@ Every answer the page can get has its own sentence:
   cross-check, and an unread date of birth blocks nothing. The page does no date calculation.
 - Recent decisions: the page shows the last 20 (number, time, outcome, reasons), refreshed after each
   decision. This goes beyond the lecture's six steps and is our own addition.
-- Timeouts (provisional): 90 s for `POST /decisions` and 120 s for `POST /extractions`. The 90 s is
-  the 60 s that the backend gives Model C plus a margin of 30 s that is not measured. The 120 s is a
-  guess, because the time of `POST /extractions` has never been measured. The page reads both values
+- Timeouts (provisional): 90 s for `POST /decisions` and 200 s for `POST /extractions`. The 90 s is
+  the 60 s that the backend gives Model C plus a margin of 30 s that is not measured. The 200 s is the
+  180 s that the backend gives the extraction service plus a margin of 20 s, because the time of
+  `POST /extractions` has never been measured. The page reads both values
   from environment variables, so changing them needs no code change.
 
 ## To do after the merge

@@ -43,8 +43,9 @@ guess.
 
 - Add a service `frontend` to `lecture_02/docker-compose.yaml`: built from `frontend`, port
   `8501:8501`, `BACKEND_URL=http://backend:8000`, the two timeout variables, `depends_on` the
-  `backend` with `condition: service_healthy`, and a health check on `/_stcore/health`. Do not
-  change the other services.
+  `backend` with `condition: service_healthy`, and a health check on `/_stcore/health`. Write the
+  health check with `python -c "import urllib.request; ..."` like the other services, since `curl`
+  may be missing in a slim image. Do not change the other services.
 - One `docker compose up` must start the page together with the rest.
 
 ## Quality
