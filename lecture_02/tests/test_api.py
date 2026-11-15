@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from stubs import StubExtraction, StubWording, stub_service
 
-from credit_backend.contracts import SAMPLE_REQUEST
+from credit_backend.contracts import SAMPLE_REQUEST, DecisionRequest
 from credit_backend.decisions.service import DecisionService
 from credit_backend.main import app
 
@@ -69,3 +69,23 @@ def test_the_recent_decisions_can_be_listed(api: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+@pytest.mark.parametrize("limit", [0, -1, 1001])
+def test_a_limit_outside_the_range_answers_422(api: TestClient, limit: int) -> None:
+    response = api.get("/decisions/recent", params={"limit": limit})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("amount", "period"),
+    [("0.00", "monthly"), ("0", "annual"), ("0.05", "annual"), ("-100", "monthly")],
+)
+def test_an_income_of_zero_or_less_answers_422(api: TestClient, amount: str, period: str) -> None:
+    body = DecisionRequest.model_validate(SAMPLE_REQUEST).model_dump(mode="json")
+    body["entered"]["monthly_income"] = {"amount": amount, "currency": "CHF", "period": period}
+
+    response = api.post("/decisions", json=body)
+
+    assert response.status_code == 422
