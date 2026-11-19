@@ -46,7 +46,7 @@ pythonpath = ["scripts", "tests"]
 testpaths = ["tests"]
 
 [tool.ty.src]
-exclude = ["extraction_service"]
+exclude = ["extraction_service", "frontend"]
 
 [tool.ty.environment]
 extra-paths = ["scripts", "tests"]
