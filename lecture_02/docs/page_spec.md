@@ -52,8 +52,9 @@ that step 1 returned.
 - Income is sent as `Money` with currency `CHF` and the period shown on the screen.
 - An empty income field means nobody could establish the income. It is sent as `null`, never as 0.
   If the case worker clears an income that was read, it is sent as `null` too.
-- The income amount must be above 0. The page refuses 0 and negative amounts. The backend's `Money`
-  has no lower limit, and an income of 0 makes `build_features` divide by zero, which gives a 500.
+- The income amount must be above 0. The page refuses 0 and negative amounts. The backend also
+  rejects a monthly amount of 0 or less with a 422 (`CaseWorkerInput`, PR #28), because 0 would
+  divide by zero in `build_features`.
 - The loss certificate has three choices: none recorded (`false`), recorded (`true`) and could not be
   read (`null`). Nothing is preselected.
 - Reasons are shown in plain words:
@@ -135,7 +136,7 @@ always has read documents, so it always sends the checkpoint.
 | `late_90` | integer | payments 90 or more days late, 0 or more | required |
 | `revolving_utilisation` | number | a share, 0.30 is 30 percent, 0 or more, no upper limit | required |
 | `monthly_debt_obligations` | decimal string | CHF per month, 0 or more | required |
-| `monthly_income` | Money or null | amount above 0 (page rule), currency `CHF`, period `monthly` or `annual` | `null` if nobody could establish it. Never 0 |
+| `monthly_income` | Money or null | monthly amount above 0 (422 otherwise), currency `CHF`, period `monthly` or `annual` | `null` if nobody could establish it. Never 0 |
 | `has_loss_certificate` | bool or null | open loss certificate on the register | `null` if nobody could read it. Never false |
 
 Money looks like `{"amount": "6000.00", "currency": "CHF", "period": "monthly"}`.
@@ -155,8 +156,8 @@ Answer 200, `DecisionResponse`:
 The outcome is `refused` when there is at least one reason and `approved` when there is none.
 
 Errors: 422 if the body does not fit. 500 if scoring or storing fails (read from `service.py`, where
-nothing handles it; not seen in practice). An income of 0 currently gives a 500 until the backend
-rejects it with a 422 (reproduced with a copy of the code, to be confirmed on the running system). This endpoint never
+nothing handles it; not seen in practice). An income whose monthly amount is 0 or less gives a 422
+(PR #28). This endpoint never
 returns the extraction 503, because `decide()` does not call the extraction service. Every POST
 creates a new record, so two clicks make two decisions. If the page gives up first, the backend keeps
 working and may still store the decision.
@@ -172,9 +173,8 @@ Answer 200, a list of stored decisions. The page uses `id`, `created_at`, `outco
 The backend returns the list newest first (`order_by(DecisionRecord.id.desc())` in `records.py`).
 The page keeps that order.
 Note: the stored record spells `dependents`, the request spells `dependants`.
-The page always sends `limit=20`. The code does not check `limit`: it passes it to the database
-unchanged (`records.py`). A negative value probably gives a 500 on PostgreSQL (known behaviour of
-PostgreSQL, not run here).
+The page always sends `limit=20`. The backend accepts a `limit` from 1 to 1000 and answers 422
+outside that range (PR #28).
 
 ## 4. States of the screen
 
@@ -238,8 +238,8 @@ Every answer the page can get has its own sentence:
   cross-check, and an unread date of birth blocks nothing. The page does no date calculation.
 - Recent decisions: the page shows the last 20 (number, time, outcome, reasons), refreshed after each
   decision. This goes beyond the lecture's six steps and is our own addition.
-- Income above 0: the page refuses an income of 0 or less. The backend should also reject it with a
-  422 (on the monthly amount, with a test), requested from Gaspar. The monthly amount matters because
+- Income above 0: the page refuses an income of 0 or less. The backend also rejects it with a
+  422 on the monthly amount, with tests (PR #28). The monthly amount matters because
   an annual 0.05 rounds to 0.00 per month and divides by zero too, so the page rule "above 0" alone
   does not cover it. Known limit: an applicant with no income cannot be entered as 0. The page can only send `null`, so the decision is refused with the
   reason `income_unknown`.
@@ -251,13 +251,6 @@ Every answer the page can get has its own sentence:
 
 ## To do after the merge
 
-- Backend (Gaspar): reject an income whose monthly amount is 0 or less with a 422 and add a test.
-  A copy of the code raised `ZeroDivisionError` for 0 monthly, 0 annual and 0.05 annual (which rounds
-  to 0.00 per month), and gave a negative `debt_ratio` for -100 monthly. First confirm with one request
-  on the running system that an income of 0 gives a 500 now. Then remove the 500 note for income 0 in
-  the sheet above.
-- Not verified yet: what `GET /decisions/recent` does for a negative `limit` (probably a 500 on
-  PostgreSQL). Not needed by the page, which always sends 20.
 - Measure the timeouts (Gaspar, on the running system). Time `POST /extractions` and `POST /decisions`
   once right after `docker compose up` (cold) and once again (warm), for example with
   `curl -s -o /dev/null -w "%{time_total}\n" ...`. A page timeout must be longer than the backend's
