@@ -136,7 +136,7 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 - All weights are positive, so a worse figure never lowers the probability, as Task 6 requires.
 - A test checks the result against a hand calculation (0.1625 for the sample applicant). The threshold is 0.35.
 - Missing inputs fall back to fixed defaults (debt ratio 0.50, utilisation 0.30, `late_90` 0).
-- TODO: add how it compared with Desmond's baseline (same applicants, same measure).
+- Comparison with Gaspar's baseline, on the same 16,714 applicants in `data/credit_risk_dataset.csv`, each at its own threshold: Gaspar's gives F1 0.679 and AUC 0.777, Desmond's F1 0.612 and AUC 0.676. Desmond's does not limit its result to 0 to 1, and 759 applicants scored above 1. The file is half defaulters (50%), so precision and recall do not carry over to the live service.
 
 **Known limit:**contracts.py only sets lower bounds on late_90 and revolving_utilisation (ge=0). Neither it nor features.py rejects unrealistic values, so a late_90 of 98 (or a utilisation in the thousands) reaches the scorer, which only limits its output to the range 0 to 1. The result saturates at 1.0 and such applicants cannot be told apart. Possible fix: add an upper bound to late_90 in contracts.py (real counts in the training data run from 0 to 17) and reject larger values with a 422 error.
 
