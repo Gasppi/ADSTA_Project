@@ -56,5 +56,5 @@ guess.
 
 ## When you are done
 
-Write a table with the 12 acceptance criteria of the specification. For each one say how the page
+Write a table with the 14 acceptance criteria of the specification. For each one say how the page
 meets it, and mark the ones you could not check. Do not claim a check you did not run.
