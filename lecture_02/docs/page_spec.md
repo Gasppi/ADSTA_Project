@@ -6,7 +6,7 @@ Status (update when you change a part):
 - [x] 3. Interface sheets (from `contracts.py` and `router.py`)
 - [x] 4. States of the screen
 - [x] 5. Acceptance criteria
-- [x] Decisions made (near the bottom of this file). The timeouts are provisional.
+- [x] Decisions made (near the bottom of this file). The timeouts are measured (2026-11-20).
 
 ## 1. User and task
 
@@ -116,8 +116,9 @@ Errors: 422 if a file is missing. 503 if the extraction service is down, with
 The 503 covers every failure of the extraction service: no answer, too late, an error status (for
 example a rejected document) and an answer that is not the expected JSON (`clients/extraction.py`).
 The page cannot tell these cases apart.
-Timeout of the page: 200 s (provisional, not measured). The backend waits up to 180 s for the
-extraction service (`read=180.0` in `clients/http.py`), so the page must wait longer than that.
+Timeout of the page: 200 s (measured, see "Measured times" below). The backend waits up to 180 s
+for the extraction service (`read=180.0` in `clients/http.py`), so the page must wait longer than
+that. The slowest measured extraction took 18.9 s.
 
 ### POST /decisions (page to backend, JSON)
 
@@ -161,7 +162,8 @@ nothing handles it; not seen in practice). An income whose monthly amount is 0 o
 returns the extraction 503, because `decide()` does not call the extraction service. Every POST
 creates a new record, so two clicks make two decisions. If the page gives up first, the backend keeps
 working and may still store the decision.
-Timeout of the page: 90 s (provisional). The backend gives Model C 60 s and then answers without a sentence.
+Timeout of the page: 90 s (measured, see "Measured times" below). The backend gives Model C 60 s and
+then answers without a sentence, so a decision takes at most about 60 s.
 
 ### GET /health
 
@@ -243,16 +245,44 @@ Every answer the page can get has its own sentence:
   an annual 0.05 rounds to 0.00 per month and divides by zero too, so the page rule "above 0" alone
   does not cover it. Known limit: an applicant with no income cannot be entered as 0. The page can only send `null`, so the decision is refused with the
   reason `income_unknown`.
-- Timeouts (provisional): 90 s for `POST /decisions` and 200 s for `POST /extractions`. The 90 s is
-  the 60 s that the backend gives Model C plus a margin of 30 s that is not measured. The 200 s is the
-  180 s that the backend gives the extraction service plus a margin of 20 s, because the time of
-  `POST /extractions` has never been measured. The page reads both values
-  from environment variables, so changing them needs no code change.
+- Timeouts: 90 s for `POST /decisions` and 200 s for `POST /extractions`, kept after measuring. The
+  90 s is the 60 s that the backend gives Model C plus a margin of 30 s. The 200 s is the 180 s that
+  the backend gives the extraction service plus a margin of 20 s. Both lie above the backend's worst
+  case and above every measured time. The page reads both values from environment variables, so
+  changing them needs no code change.
 
-## To do after the merge
+## Measured times
 
-- Measure the timeouts (Gaspar, on the running system). Time `POST /extractions` and `POST /decisions`
-  once right after `docker compose up` (cold) and once again (warm), for example with
-  `curl -s -o /dev/null -w "%{time_total}\n" ...`. A page timeout must be longer than the backend's
-  worst case, or the page gives up while the backend is still working. Replace the provisional values
-  in this file and in `docker-compose.yaml`, and record the measured times in the decision log.
+Measured by Gaspar on 2026-11-19 and 2026-11-20, on the full Compose system on a Mac with 8 GB of
+memory and no GPU, with `curl -s -o /dev/null -w "%{http_code} %{time_total}\n" ...`.
+
+| Call | Cold | Warm |
+|---|---|---|
+| `POST /extractions` (sample documents of applicant 0) | 18.9 s and 18.2 s | 13.6 s |
+| Model C alone, first load (`/api/generate` on Ollama, `num_ctx` 2048) | 368.8 s | - |
+| `POST /decisions` | about 60 s, without `wording` (the backend stops Model C after 60 s) | 43.4 s, with `wording` |
+
+Known limit: on this machine the first decisions after a start come without a sentence, because
+loading Model C takes longer than the 60 s the backend gives it. Even with the model loaded, a
+decision takes 43 s, close to that limit. The page handles both cases as specified.
+
+## Checked on the running system (2026-11-20)
+
+All 14 acceptance criteria were checked on the full system after PR #31 was merged.
+
+| # | Result | Note |
+|---|---|---|
+| 1 | ok | Decision 29, "No rule failed.", listed on top |
+| 2 | ok | Decision 30, `loss_certificate_unknown` |
+| 3 | ok | Decision 31, `income_unknown` |
+| 4 | ok | Decision 37 shows the sentence with its label. With `wording` null, no sentence and no label |
+| 5 | ok | 503 sentence and Decide disabled with extraction stopped. Reading works again after the start |
+| 6 | ok | Message right away with the backend stopped. No record created |
+| 7 | ok | `docker compose up` starts the page after a healthy backend |
+| 8 | ok | 30 shows the warning |
+| 9 | ok | A fast double click by hand created one record (32) |
+| 10 | ok | Checked by reading the code |
+| 11 | ok | Blocked with `register_002_form.pdf`, enabled again with `register_000_office.pdf` |
+| 12 | ok | The new decision is on top. "Could not be loaded" with the backend stopped or paused |
+| 13 | ok | 0 and -100 refused, Decide disabled |
+| 14 | ok | Paused backend gives the "did not answer in time" sentence. Decision 38 was stored after the unpause |

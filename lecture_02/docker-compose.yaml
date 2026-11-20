@@ -76,9 +76,9 @@ services:
     build: frontend
     environment:
       BACKEND_URL: http://backend:8000
-      # Provisional, not measured yet. Replace them after measuring (see docs/page_spec.md).
-      # The page waits longer than the backend: 180 s for the extraction plus 20 s, and
-      # 60 s for Model C plus 30 s.
+      # Measured on 2026-11-20 (see "Measured times" in docs/page_spec.md): extraction at most
+      # 18.9 s, decision at most about 60 s. The page waits longer than the backend: 180 s for
+      # the extraction plus 20 s, and 60 s for Model C plus 30 s.
       EXTRACTION_TIMEOUT_SECONDS: "200"
       DECISION_TIMEOUT_SECONDS: "90"
     ports:
