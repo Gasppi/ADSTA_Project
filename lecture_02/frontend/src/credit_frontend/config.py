@@ -1,7 +1,7 @@
 """What the page reads from the environment when it starts.
 
-None of the three values has a default. Docker Compose sets them. The two timeouts are
-provisional until they are measured, and changing them needs no code change.
+None of the three values has a default. Docker Compose sets them. The two timeouts were
+measured on 2026-11-20 (see docs/page_spec.md), and changing them needs no code change.
 """
 
 import os
