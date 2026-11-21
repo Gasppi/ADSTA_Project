@@ -253,6 +253,42 @@ A longer meaning for `loss_certificate_unknown` fixed that last wording but made
 - **Missing package.** The README's `uv add` list does not include `python-multipart`, which the upload endpoint needs. We added it.
 - **Memory.** On an 8 GB laptop Docker got 4 GB by default. Raising it to 6 GB left Windows with 1.2 GB free, and everything slowed down. The services need less than 1 GB, plus about 2.5 GB when Model C is loaded.
 
+### 2026-11-21: Case worker's page (Task 5)
+
+**Decision:** the page is a Streamlit app in `lecture_02/frontend/` (package `credit_frontend`). It collects the values and shows what the backend answers. The backend decides, and the page holds no score, threshold or probability. Compose starts it as the service `frontend` on port 8501, after the backend is healthy. The requirements and the 14 acceptance criteria are in `lecture_02/docs/page_spec.md`. A coding agent (Claude Code) wrote the page from `lecture_02/docs/page_build_prompt.md`, and we reviewed the code against the specification, not against how the page looks.
+
+**Why:**
+- Utilisation is asked for as a share (0.30 is 30%), so the page does no conversion. The backend has no upper limit, so the page shows a soft warning above 1 and still allows it, because an applicant can be over the credit limit.
+- Double click: the page disables Decide while a decision is running, so one click makes one record. The backend is unchanged. A fast double click by hand created one record (decision 32).
+- Different people: the page blocks Decide when `same_applicant` is `false`. The only way on is to upload other documents.
+- No manual entry: the page requires the documents.
+- Age: the case worker types it. The date of birth that Model B read is shown beside it for a cross-check.
+- Recent decisions: the page shows the last 20 and refreshes the list after each decision. This is our own addition to the lecture's steps.
+- Income above 0: the page refuses an income of 0 or less. The backend also answers 422 for a monthly amount of 0 or less (PR #28), because an annual 0.05 rounds to 0.00 per month and divides by zero.
+- For an answer other than 200, 422 or 503 from `POST /extractions` the specification named no sentence. The page says "The backend failed. Nothing was decided.", which is true because an extraction decides nothing.
+- Timeouts: 90 s for `POST /decisions` and 200 s for `POST /extractions`. The 90 s is the 60 s that the backend gives Model C plus 30 s. The 200 s is the 180 s that the backend gives the extraction service plus 20 s. Both are above every measured time (extraction at most 18.9 s, decision about 60 s on the full system, measured by Gaspar on 2026-11-19 and 2026-11-20). Both are environment variables, so changing them needs no code change.
+- Checked: all 14 acceptance criteria were run on the full system on 2026-11-20, see "Checked on the running system" in `lecture_02/docs/page_spec.md`.
+
+**Where each rule lives:**
+- The backend decides: the threshold and the probability in `scoring.py`, the rules and the reasons in `rules.py`. The page shows the outcome and the reasons it receives.
+- Income above 0: in both. The page refuses it before sending, and the backend answers 422 (`CaseWorkerInput` in `contracts.py`).
+- Only in the page: the "different people" block, the soft warning for a utilisation above 1, and the rule that an empty field is sent as `null`, never as 0.
+
+**When a service is down, the page says:**
+- Extraction service down or failing: "The extraction service gave no result. It may be down, or it may have rejected a document. …", and Decide stays disabled (criterion 5).
+- Backend down: "The backend does not answer. Nothing was decided." right away (criterion 6).
+- Backend slow, no answer within 90 s: "The backend did not answer in time. The decision may still have been recorded. Check the list of recent decisions before deciding again." (criterion 14). In the test, decision 38 was stored after the backend was unpaused, so the sentence is true.
+- Extraction not answered within 200 s: "The backend did not answer in time. Nothing was decided. Try again."
+- Model C (Ollama) down or slower than 60 s: the decision still comes, without a sentence and without its label (criterion 4).
+- Recent list cannot be loaded: "The list of recent decisions could not be loaded." (criterion 12). The rest of the page keeps working.
+
+**Known limits:**
+- `POST /decisions` is not idempotent, so another caller, such as the `/docs` page, can still create two records by sending twice.
+- The "different people" rule lives only in the page. If Model B misreads a name, a legitimate case is blocked until other files are found.
+- One failing service stops all decisions, although the backend would accept an application without documents.
+- An applicant with no income cannot be entered as 0. The page sends `null`, and the decision is refused with the reason `income_unknown`.
+- On the machine of the measurement (8 GB, no GPU), loading Model C took 368.8 s, so the first decisions after a start come without a sentence. A decision with the model loaded took 43.4 s.
+
 ## Fresh-clone check
 
 2026-10-18, Windows 10 (build 19045), Desmond. Followed this README on a fresh clone of `docs/readme-and-decision-log`. `uv sync` installed 52 packages on Python 3.13.15. `uv run pytest --cov=credit_backend --cov-fail-under=80` gave 9 passed with 96.79% coverage. `docker build` finished in about 6 minutes on `python:3.13-slim`. The container served `/docs`, and `POST /decisions` returned 200 with `default_probability` 0.1625 and `model_version` `gaspar-baseline-v1`. Nothing had to be guessed.
