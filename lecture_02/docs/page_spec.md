@@ -219,7 +219,7 @@ Every answer the page can get has its own sentence:
 | 11 | Documents of different people block the decision. | If `same_applicant` is `false`, the page says so and Decide stays disabled. Uploading matching documents enables it again. If `same_applicant` is `null`, the page says "could not be checked" and Decide stays enabled. |
 | 12 | The page lists the last 20 decisions. | After a decision, the list shows it at the top with its number, time, outcome and reasons. With `docker compose stop backend`, the page says the list could not be loaded. |
 | 13 | Income must be above 0. | Enter an income of 0 and of -100. The page refuses both and sends nothing to the backend. An empty income field is sent as `null`. |
-| 14 | A slow backend is not reported as "nothing was decided". | Run `docker compose pause backend`, press Decide and wait for the 90 s timeout. The page shows the "did not answer in time" sentence. Then run `docker compose unpause backend`. (Not yet tried.) |
+| 14 | A slow backend is not reported as "nothing was decided". | Run `docker compose pause backend`, press Decide and wait for the 90 s timeout. The page shows the "did not answer in time" sentence. Then run `docker compose unpause backend`. |
 
 ## Decisions made (to copy into the decision log)
 
