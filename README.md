@@ -49,7 +49,7 @@ This runs all tests and fails if the code coverage drops below 80%. The same com
 
 ## Run the whole system with Docker Compose
 
-Docker Desktop must be running. The system has four services: `postgres` (the database), `extraction` (Model B, reads the documents), `ollama` (Model C, words the explanation) and `backend` (the API).
+Docker Desktop must be running. The system has five services: `postgres` (the database), `extraction` (Model B, reads the documents), `ollama` (Model C, words the explanation), `backend` (the API) and `frontend` (the case worker's page).
 
 **1. Create your settings file.** Copy the template and fill it in:
 
@@ -83,7 +83,7 @@ The first start builds the images and downloads Model B, so `extraction` can tak
 docker compose exec ollama ollama pull llama3.2:3b
 ```
 
-**4. Try it.** Open http://localhost:8000/docs. `POST /extractions` reads a document, `POST /decisions` returns a decision and stores it, and `GET /decisions/recent` lists the stored decisions. The extraction service itself is on port 8001.
+**4. Try it.** Open http://localhost:8000/docs. `POST /extractions` reads a document, `POST /decisions` returns a decision and stores it, and `GET /decisions/recent` lists the stored decisions. The extraction service itself is on port 8001. The case worker's page is at http://localhost:8501.
 
 **5. Stop.** Press `Ctrl+C`, or run `docker compose down`. The database and the downloaded models stay in Docker volumes. `docker compose down -v` deletes those volumes too, so use it only when you want to start from nothing.
 
@@ -105,6 +105,8 @@ lecture_02/
 │       ├── service.py           decision service
 │       └── router.py            HTTP endpoints
 ├── tests/                       pytest tests
+├── extraction_service/          Model B, reads the documents (own uv project)
+├── frontend/                    the case worker's page (own uv project, Streamlit)
 ├── Dockerfile
 ├── .dockerignore
 ├── pyproject.toml
@@ -113,7 +115,7 @@ lecture_02/
 
 ## Continuous integration
 
-The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on every pull request and on every push to `main`. It installs the project from `uv.lock` on Python 3.13 and runs the tests with an 80% coverage minimum.
+The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on every pull request and on every push to `main`. The `checks` job installs the project from `uv.lock` on Python 3.13, runs Ruff, the format check and ty, and then runs the tests with an 80% coverage minimum. The `frontend` job runs Ruff, the format check, ty and the tests for the case worker's page in `lecture_02/frontend`.
 
 ## Troubleshooting
 
@@ -151,7 +153,8 @@ The GitHub Actions workflow `checks` (`.github/workflows/checks.yml`) runs on ev
 
 - **The workflow sits at the repository root.** GitHub reads workflows only from `.github/workflows/` at the root. It was first in `lecture_02/` and did not run (the pull request showed 0 checks), so it was moved.
 - **It runs on `pull_request` and on `push` to `main`**, with `--cov-fail-under=80`.
-- **Open:** Ruff and ty steps in the workflow, and `checks` as a required status check in the GitHub rules.
+- **Ruff, the format check and ty** run in the `checks` job since 2026-11-22 (PR #36), as they already did in the `frontend` job.
+- **Not verified:** whether `checks` is set as a required status check in the GitHub rules. That is a GitHub setting, not code.
 
 ### 2026-10-31: Model B (reading the documents)
 
