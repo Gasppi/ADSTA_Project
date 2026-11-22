@@ -289,6 +289,20 @@ A longer meaning for `loss_certificate_unknown` fixed that last wording but made
 - An applicant with no income cannot be entered as 0. The page sends `null`, and the decision is refused with the reason `income_unknown`.
 - On the machine of the measurement (8 GB, no GPU), loading Model C took 368.8 s, so the first decisions after a start come without a sentence. A decision with the model loaded took 43.4 s.
 
+### 2026-11-22: Which scorer the system uses by default
+
+**Decision:** the system scores with the baseline (`gaspar-baseline-v1`, threshold 0.35) unless `MODEL_A` is set. With `MODEL_A` set, for example to `wandb-registry-model/model-a:production`, it scores with the registered random forest (`model-a:v5`, threshold 0.5). `dependencies.py` makes this choice. The `model_version` in every answer shows which scorer decided.
+
+**Why:**
+- A clean clone must start without credentials. The registered model is loaded from the W&B registry and needs `WANDB_API_KEY`. That key belongs to the team's W&B account, so it is a secret and must never be in the repository.
+- The baseline needs nothing extra, so anyone can run the system from a clean clone.
+
+**What this gives up:** the forest is the better model. On the test set it has F1 0.743 and the baseline 0.660 (see `lecture_02/docs/model_card.md`). The default decisions are therefore less accurate than the best model we trained. The two scorers also use different thresholds (0.35 and 0.5), so their decisions are not directly comparable.
+
+**How to switch:** set `MODEL_A` and `WANDB_API_KEY` in `.env`. The evidence for the forest is in `lecture_02/docs/model_card.md` and `lecture_02/docs/decision_log.md` (the decision log of Model A, tasks 1 to 8).
+
+**Open:** whether a clean clone may require a W&B key. If the lecturers accept it, the forest could become the default.
+
 ## Fresh-clone check
 
 2026-10-18, Windows 10 (build 19045), Desmond. Followed this README on a fresh clone of `docs/readme-and-decision-log`. `uv sync` installed 52 packages on Python 3.13.15. `uv run pytest --cov=credit_backend --cov-fail-under=80` gave 9 passed with 96.79% coverage. `docker build` finished in about 6 minutes on `python:3.13-slim`. The container served `/docs`, and `POST /decisions` returned 200 with `default_probability` 0.1625 and `model_version` `gaspar-baseline-v1`. Nothing had to be guessed.
