@@ -81,7 +81,7 @@ cp .env.example .env
 
 **4. Stop.** Press `Ctrl+C`, or run `docker compose down`. The database and the downloaded models stay in Docker volumes. `docker compose down -v` deletes those volumes too, so use it only when you want to start from nothing.
 
-**Memory.** On one team machine, the default 4 GB for Docker was not enough for all four services. Give Docker more memory in Docker Desktop, or on Windows in `~/.wslconfig`. If Model C takes longer than 60 seconds to answer, the backend still returns the decision, without the wording, and logs a warning.
+**Memory.** Without Model C loaded, the five services use about 1.2 GB together (measured on 2026-11-24: extraction 589 MB, frontend 281 MB, backend 182 MB, ollama 112 MB, postgres 32 MB). Loading Model C adds about 2.5 GB. On one team machine, the default 4 GB for Docker was not enough. Give Docker more memory in Docker Desktop, or on Windows in `~/.wslconfig`. If Model C takes longer than 60 seconds to answer, the backend still returns the decision, without the wording, and logs a warning.
 
 ## Project layout
 
@@ -301,5 +301,7 @@ A longer meaning for `loss_certificate_unknown` fixed that last wording but made
 **Open:** whether a clean clone may require a W&B key. If the lecturers accept it, the forest could become the default.
 
 ## Fresh-clone check
+
+2026-11-24, macOS on an Apple Silicon Mac with 8 GB, Gaspar. A fresh clone of the branch `compose-one-command` (PR #39), with no `.env` file. Started with `docker compose -p credit-clean up --build -d`; the separate project name gave new, empty volumes, as on a new machine. The one command took 8 min 4 s: the images were built in 199 s, `extraction` was healthy after 200 s, `ollama-pull` downloaded Model C and exited with code 0 after 264 s, and `backend` was healthy after 281 s. All five services reached healthy. A decision through the page at http://localhost:8501 came back approved. The only local change was the Postgres port `5433:5432`, because another Postgres already used port 5432 on that Mac; a machine without one needs no change.
 
 2026-10-18, Windows 10 (build 19045), Desmond. Followed this README on a fresh clone of `docs/readme-and-decision-log`. `uv sync` installed 52 packages on Python 3.13.15. `uv run pytest --cov=credit_backend --cov-fail-under=80` gave 9 passed with 96.79% coverage. `docker build` finished in about 6 minutes on `python:3.13-slim`. The container served `/docs`, and `POST /decisions` returned 200 with `default_probability` 0.1625 and `model_version` `gaspar-baseline-v1`. Nothing had to be guessed.
