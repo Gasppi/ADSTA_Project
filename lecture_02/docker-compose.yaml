@@ -4,9 +4,11 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:-credit}
+      # Local default, so a clean clone starts without a .env file. The database is only
+      # used inside this Compose project. Set POSTGRES_PASSWORD in .env to change it.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-credit}
+      POSTGRES_DB: ${POSTGRES_DB:-credit}
     volumes:
       - postgres:/var/lib/postgresql/data
     ports:
@@ -21,8 +23,8 @@ services:
   extraction:
     build: extraction_service
     environment:
-      MODEL_B_CHECKPOINT: ${MODEL_B_CHECKPOINT:?set MODEL_B_CHECKPOINT in .env}
-      MODEL_B_REVISION: ${MODEL_B_REVISION:?set MODEL_B_REVISION in .env}
+      MODEL_B_CHECKPOINT: ${MODEL_B_CHECKPOINT:-impira/layoutlm-document-qa}
+      MODEL_B_REVISION: ${MODEL_B_REVISION:-beed3c4d02d86017ebca5bd0fdf210046b907aa6}
     volumes:
       - models:/models
     ports:
@@ -47,14 +49,26 @@ services:
       start_period: 30s
       retries: 10
 
+  # Downloads Model C once, then stops. It replaces the manual `ollama pull` step.
+  # The model stays in the ollama volume, so later starts finish at once.
+  ollama-pull:
+    image: ollama/ollama:0.32.5
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    command: ["pull", "${MODEL_C:-llama3.2:3b}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
   backend:
     build: .
     environment:
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-credit}:${POSTGRES_PASSWORD:-credit}@postgres:5432/${POSTGRES_DB:-credit}}
       EXTRACTION_URL: http://extraction:8000
       OLLAMA_URL: http://ollama:11434
       MODEL_A: ${MODEL_A:-}
-      MODEL_C: ${MODEL_C:-}
+      MODEL_C: ${MODEL_C:-llama3.2:3b}
       WANDB_API_KEY: ${WANDB_API_KEY:-}
     ports:
       - "8000:8000"
@@ -65,6 +79,8 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s

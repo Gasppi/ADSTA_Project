@@ -51,41 +51,35 @@ This runs all tests and fails if the code coverage drops below 80%. The same com
 
 Docker Desktop must be running. The system has five services: `postgres` (the database), `extraction` (Model B, reads the documents), `ollama` (Model C, words the explanation), `backend` (the API) and `frontend` (the case worker's page).
 
-**1. Create your settings file.** Copy the template and fill it in:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Value |
-|---|---|
-| `POSTGRES_USER`, `POSTGRES_DB` | `credit` (already in the template) |
-| `POSTGRES_PASSWORD` | A password you choose |
-| `DATABASE_URL` | `postgresql+psycopg://credit:YOUR_PASSWORD@postgres:5432/credit`, with the same password |
-| `MODEL_B_CHECKPOINT` | `impira/layoutlm-document-qa` |
-| `MODEL_B_REVISION` | `beed3c4d02d86017ebca5bd0fdf210046b907aa6` |
-| `MODEL_C` | `llama3.2:3b` |
-| `MODEL_A`, `WANDB_API_KEY` | Leave `MODEL_A` empty to score with the baseline. `WANDB_API_KEY` is not used while `MODEL_A` is empty. |
-
-`.env` holds secrets. Never commit it or paste it into a chat.
-
-**2. Start everything:**
+**1. Start everything:**
 
 ```bash
 docker compose up --build
 ```
 
-The first start builds the images and downloads Model B, so `extraction` can take several minutes to become healthy. The `backend` starts after the other three report healthy.
+No settings file is needed. The first start builds the images and downloads Model B and Model C, so it can take several minutes: `extraction` has to become healthy, and the one-time service `ollama-pull` downloads Model C and then stops. The `backend` starts after the other services report healthy and Model C is downloaded. Later starts reuse the downloaded models.
 
-**3. Download Model C once.** In a second terminal, in the same folder:
+**2. Change a setting (optional).** Copy the template and set only what you want to change. A value in `.env` replaces the default:
 
 ```bash
-docker compose exec ollama ollama pull llama3.2:3b
+cp .env.example .env
 ```
 
-**4. Try it.** Open http://localhost:8000/docs. `POST /extractions` reads a document, `POST /decisions` returns a decision and stores it, and `GET /decisions/recent` lists the stored decisions. The extraction service itself is on port 8001. The case worker's page is at http://localhost:8501.
+| Variable | Default |
+|---|---|
+| `POSTGRES_USER`, `POSTGRES_DB` | `credit` |
+| `POSTGRES_PASSWORD` | `credit`. It protects the database that runs inside this Compose project only. |
+| `DATABASE_URL` | Built from the three values above. Set it only to use another database. |
+| `MODEL_B_CHECKPOINT` | `impira/layoutlm-document-qa` |
+| `MODEL_B_REVISION` | `beed3c4d02d86017ebca5bd0fdf210046b907aa6` |
+| `MODEL_C` | `llama3.2:3b` |
+| `MODEL_A`, `WANDB_API_KEY` | Both empty: the backend scores with the baseline. `WANDB_API_KEY` is not used while `MODEL_A` is empty. |
 
-**5. Stop.** Press `Ctrl+C`, or run `docker compose down`. The database and the downloaded models stay in Docker volumes. `docker compose down -v` deletes those volumes too, so use it only when you want to start from nothing.
+`.env` can hold secrets such as `WANDB_API_KEY`. Never commit it or paste it into a chat.
+
+**3. Try it.** Open http://localhost:8000/docs. `POST /extractions` reads a document, `POST /decisions` returns a decision and stores it, and `GET /decisions/recent` lists the stored decisions. The extraction service itself is on port 8001. The case worker's page is at http://localhost:8501.
+
+**4. Stop.** Press `Ctrl+C`, or run `docker compose down`. The database and the downloaded models stay in Docker volumes. `docker compose down -v` deletes those volumes too, so use it only when you want to start from nothing.
 
 **Memory.** On one team machine, the default 4 GB for Docker was not enough for all four services. Give Docker more memory in Docker Desktop, or on Windows in `~/.wslconfig`. If Model C takes longer than 60 seconds to answer, the backend still returns the decision, without the wording, and logs a warning.
 
